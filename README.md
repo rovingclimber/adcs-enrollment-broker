@@ -1,5 +1,24 @@
 # AD CS Enrollment Broker
 
+## Why this exists
+
+EAP-TLS proves that an endpoint holds a trusted private key, but authorization
+often needs more than identity. Network policy may depend on stable facts such
+as what the endpoint is, what it is used for, or which access role it is
+eligible to receive. Without those facts in the credential, a RADIUS service
+must maintain extensive identity mappings or query another system during every
+authentication.
+
+AD CS Enrollment Broker moves that policy step to certificate enrollment. It
+authenticates the requester, reads governed endpoint facts, and places only
+approved claims into a certificate issued by AD CS. RADIUS or another relying
+party can then validate the certificate and apply compact rules to those claims
+without depending on a live broker or inventory lookup for each authentication.
+The relying party still makes the final authorization decision.
+
+See [Why this exists](docs/why.md) for the problem, tradeoffs, and certificate-
+freshness model.
+
 AD CS Enrollment Broker is a policy and registration-authority layer between
 native Windows certificate-enrollment clients and Microsoft Active Directory
 Certificate Services (AD CS). It implements the supported portions of MS-XCEP
@@ -24,7 +43,8 @@ operational evidence, credentials, certificate identifiers, and Git history.
 
 ## Documentation
 
-- [Documentation home](docs/index.md) and [quick start](docs/quick-start.md)
+- [Documentation home](docs/index.md), [why this exists](docs/why.md), and
+  [quick start](docs/quick-start.md)
 - [System context and trust boundaries](docs/architecture/system-context.md)
 - [Component architecture](docs/architecture/components.md)
 - [Trust boundaries and durable state](docs/architecture/trust-boundaries.md)

@@ -9,7 +9,8 @@ flowchart LR
     B -->|policy-approved signing intent| S[Isolated signer]
     C -->|issued certificate| B
     B -->|validated certificate| W
-    W -->|EAP-TLS certificate| N[Network policy service]
+    W -->|EAP-TLS certificate| N[RADIUS or policy service]
+    N -->|validate certificate and evaluate claims| P[Role, VLAN, or access policy]
 ```
 
 The Windows client generates and retains its private key. It supplies proof
@@ -28,3 +29,10 @@ signer administrator are explicit trust dependencies. Compromise of the broker
 can misstate authenticated identity or facts before a valid signer request is
 constructed. The signer limits key use, but it cannot independently establish
 the upstream directory truth.
+
+The broker and facts authority participate when the certificate is issued or
+renewed; they are not required for each EAP-TLS authentication. The relying
+party validates the certificate and applies its own compact policy to the
+approved claims. The certificate informs that decision but does not grant a
+role or VLAN by itself. See [why this exists](../why.md) for the alternatives
+and the signed-snapshot freshness boundary.

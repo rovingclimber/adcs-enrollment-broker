@@ -1,5 +1,5 @@
 {
-  "fileCount": 204,
+  "fileCount": 205,
   "files": [
     {
       "mode": "100644",
@@ -88,8 +88,8 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "69bd31687f12e3a7427c3ce2d3da2453fe42023d023e17c35c50390678c039d1",
-      "size": 3119
+      "sha256": "dc7927b5f804ff71e56a0d7955e5b7d3bfee42574f09ea2be7b7667fc95dd816",
+      "size": 4132
     },
     {
       "mode": "100644",
@@ -130,8 +130,8 @@
     {
       "mode": "100644",
       "path": "docs/architecture/system-context.md",
-      "sha256": "65822bf428fb6f62158c9a076fac3328a59453ed7cca9799b1c2b53b63c7e72b",
-      "size": 1518
+      "sha256": "e3d1e402229a2054a4aa14d0cabbbb136a4b7e98d89a6eda36689d0edb3c5c6d",
+      "size": 2030
     },
     {
       "mode": "100644",
@@ -142,8 +142,8 @@
     {
       "mode": "100644",
       "path": "docs/concepts.md",
-      "sha256": "073e8211c19c0650172cbee9cd38e87f5656f683e7a6a781de7a82ffd25993ef",
-      "size": 1736
+      "sha256": "15dcf0d5ed487d0f482eae08df9fab476b99e7aae9f15e889d8b6d6aea60ab72",
+      "size": 2697
     },
     {
       "mode": "100644",
@@ -166,8 +166,8 @@
     {
       "mode": "100644",
       "path": "docs/index.md",
-      "sha256": "7100499a28016d1bc43b8c3733c5a6f7fd239b22c33072c9ecb707ae63a8149a",
-      "size": 1371
+      "sha256": "8bc84c067b44f4a6346a60f7dca5404a3170148851fbfa92340d90eceba176ac",
+      "size": 1915
     },
     {
       "mode": "100644",
@@ -190,8 +190,8 @@
     {
       "mode": "100644",
       "path": "docs/protocols/facts-flow.md",
-      "sha256": "d8da4905650ea8d7a27d11334282307b47ffa71f913112c8842738664718f34c",
-      "size": 1251
+      "sha256": "b53551c3b9942e75222ae34cb6de9c695832023a1c33727ee3e645e6a8127a3b",
+      "size": 1715
     },
     {
       "mode": "100644",
@@ -249,6 +249,12 @@
     },
     {
       "mode": "100644",
+      "path": "docs/why.md",
+      "sha256": "4383feac158522b80ab6df0875d0ea9b0937a539f79d23eb2462f69cdf6cd139",
+      "size": 4344
+    },
+    {
+      "mode": "100644",
       "path": "examples/devices.example.json",
       "sha256": "0ecbce6a828e6f34153381aa27b9528236ffe7813bcebbdc9673cb3755f65017",
       "size": 429
@@ -268,8 +274,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "05b9cd974b79315e29d1bba316f993d2d28b1e01150ea351b0e1df36a1cca1e0",
-      "size": 1868
+      "sha256": "02615b1ed57f84f11783f7861214590204037022a8992d246a07295523d3c269",
+      "size": 2058
     },
     {
       "mode": "100644",
@@ -1228,5 +1234,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "dd54864d71e7ee22ea68c53b7b200d0184b69038a4afdb41acd892d0a078983c"
+  "treeSha256": "f36cba690795a302663174928b791bfa581009e1cb45cbc5a6178801bcacffb1"
 }
