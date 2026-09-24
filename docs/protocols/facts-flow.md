@@ -25,6 +25,13 @@ identity, performs optimistic revision checks and records a hash-linked audit
 entry. Facts affect the next enrollment or renewal decision; editing facts does
 not rewrite an already-issued certificate.
 
+Consequently, a facts publication does not dynamically change an active RADIUS
+session or the claims presented by an installed certificate. The relying party
+continues to evaluate that signed snapshot until a replacement certificate is
+issued, the older certificate is revoked or expires, or separate local policy
+rejects it. Deployments must align fact stability, certificate lifetime,
+renewal cadence, and revocation behavior with their required response time.
+
 If publication fails after a recovery record is written, operators reconcile
 the recorded revision and hashes before retrying. Never repair the active JSON
 file by hand.

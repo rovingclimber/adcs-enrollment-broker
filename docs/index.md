@@ -1,13 +1,23 @@
 # AD CS Enrollment Broker documentation
 
-AD CS Enrollment Broker gives native Windows certificate-enrollment clients a
-narrow policy boundary in front of Microsoft Active Directory Certificate
-Services (AD CS). Windows keeps the client private key. The broker authenticates
-the requester, resolves authoritative identity and facts, constructs the
-approved certificate request, and validates the issued result.
+EAP-TLS proves possession of a trusted private key, but authorization often
+depends on stable endpoint facts such as device class, use, or permitted access
+role. Without those facts in the credential, a RADIUS service must maintain
+large identity mappings or depend on a live inventory or policy API during
+authentication.
 
-Start with the [quick start](quick-start.md) and [concepts](concepts.md), then
-use the [system context](architecture/system-context.md) and
+AD CS Enrollment Broker moves that fact-resolution step to enrollment. It gives
+native Windows certificate-enrollment clients a narrow policy boundary in front
+of Microsoft Active Directory Certificate Services (AD CS). Windows keeps the
+client private key. The broker authenticates the requester, resolves governed
+identity and facts, constructs the approved certificate request, and validates
+the issued result. RADIUS or another relying party can then apply compact local
+rules to approved certificate claims without calling the broker during every
+authentication.
+
+Start with [why this exists](why.md), then use the
+[quick start](quick-start.md), [concepts](concepts.md),
+[system context](architecture/system-context.md), and
 [protocol flows](protocols/enrollment-flows.md) to follow domain enrollment,
 bootstrap and renewal. The [threat model](security/threat-model.md) states the
 trusted components and failure behavior. Operators should review the

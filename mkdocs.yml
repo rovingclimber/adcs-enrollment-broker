@@ -1,5 +1,8 @@
 site_name: AD CS Enrollment Broker
 site_description: Policy and registration-authority broker for native Windows certificate enrollment
+site_url: https://example.github.io/adcs-enrollment-broker/
+repo_url: https://github.com/example/adcs-enrollment-broker
+repo_name: example/adcs-enrollment-broker
 docs_dir: docs
 site_dir: site
 strict: true
@@ -34,6 +37,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Overview: index.md
+  - Why this exists: why.md
   - Quick start: quick-start.md
   - Concepts: concepts.md
   - Architecture:
