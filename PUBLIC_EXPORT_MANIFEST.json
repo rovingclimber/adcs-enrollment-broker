@@ -100,8 +100,8 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "a643b388d8868d51e16997462bb9611ee0add36b2c902f73dbeec5009a545f98",
-      "size": 4820
+      "sha256": "0632acaf493bc62e20a11e9d2f407217db1c48c7e5b2b1debb007e8a9192e56f",
+      "size": 5322
     },
     {
       "mode": "100644",
@@ -226,8 +226,8 @@
     {
       "mode": "100644",
       "path": "docs/index.md",
-      "sha256": "120dacbc08f14e86000197d16abb3f92a2cea538f05d7113b23b498f2c392450",
-      "size": 2230
+      "sha256": "71242e5c81332f2aa8f218a60fc6d13bfb06596bf30ed446734a50def17a5408",
+      "size": 2686
     },
     {
       "mode": "100644",
@@ -310,8 +310,8 @@
     {
       "mode": "100644",
       "path": "docs/why.md",
-      "sha256": "25e2789a65ca638629e842786268917430f5931f952b7242891d8569215efc9b",
-      "size": 5582
+      "sha256": "c92692f35734a6e1e70ee6065a2f7732cf440a60af243ec19e3c000001322089",
+      "size": 9647
     },
     {
       "mode": "100644",
@@ -1306,5 +1306,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "27bf2201b12201f5cadf9a170aad00477a69047892c2f1c4da94a65c13f3e9e9"
+  "treeSha256": "a5dfda17765d1bdbdaa498c835c9ea9bb945fb7758297ed570d18db13dc7a3c8"
 }

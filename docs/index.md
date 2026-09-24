@@ -1,25 +1,34 @@
-# AD CS Enrollment Broker documentation
+# AD CS Enrollment Broker
 
 <figure class="docs-hero">
   <img src="assets/images/enrollment-architecture-hero.png"
        alt="Isometric endpoint, network switch, enrollment broker and certificate authority connected in sequence">
-  <figcaption>From endpoint identity to governed certificate claims and network policy.</figcaption>
+  <figcaption>Give the certificate useful facts. Let RADIUS keep making the decision.</figcaption>
 </figure>
 
-EAP-TLS proves possession of a trusted private key, but authorization often
-depends on stable endpoint facts such as device class, use, or permitted access
-role. Without those facts in the credential, a RADIUS service must maintain
-large identity mappings or depend on a live inventory or policy API during
-authentication.
+Your 802.1X deployment works. Certificates authenticate machines. RADIUS says
+yes. Everyone celebrates until somebody asks for engineering devices in one
+VLAN, kiosks in another, and the frightening projector laptop somewhere it can
+do no harm.
+
+Now you need more than identity. You need stable facts about what each endpoint
+*is for*. The usual answers are a growing pile of RADIUS mappings, a live CMDB
+lookup in every authentication, or an OU hierarchy pressed into service as an
+asset taxonomy. There is also the traditional option of giving up and deciding
+that flat networks build character.
 
 AD CS Enrollment Broker moves that fact-resolution step to enrollment. It gives
 native Windows certificate-enrollment clients a narrow policy boundary in front
 of Microsoft Active Directory Certificate Services (AD CS). Windows keeps the
 client private key. The broker authenticates the requester, resolves governed
 identity and facts, constructs the approved certificate request, and validates
-the issued result. RADIUS or another relying party can then apply compact local
-rules to approved certificate claims without calling the broker during every
-authentication.
+the issued result. RADIUS can then apply compact local rules to approved
+certificate claims without calling the broker or your inventory system during
+every authentication.
+
+The broker is the useful kind of middle layer: absent from the live EAP-TLS
+exchange, strict about what enters a certificate, and deeply unimpressed by a
+client asking to choose its own identity.
 
 Start with [why this exists](why.md), then use the
 [quick start](quick-start.md), [concepts](concepts.md),
