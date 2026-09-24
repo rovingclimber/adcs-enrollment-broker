@@ -35,6 +35,8 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - assets/stylesheets/visuals.css
 nav:
   - Overview: index.md
   - Why this exists: why.md

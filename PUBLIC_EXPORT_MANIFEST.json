@@ -1,5 +1,5 @@
 {
-  "fileCount": 205,
+  "fileCount": 212,
   "files": [
     {
       "mode": "100644",
@@ -88,8 +88,8 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "dc7927b5f804ff71e56a0d7955e5b7d3bfee42574f09ea2be7b7667fc95dd816",
-      "size": 4132
+      "sha256": "84e1ede24639d296b87a5c1843f0438e89842f2e72bafe9f96275329505cf2dd",
+      "size": 4326
     },
     {
       "mode": "100644",
@@ -141,6 +141,48 @@
     },
     {
       "mode": "100644",
+      "path": "docs/assets/images/broker-ca-server-isometric.png",
+      "sha256": "c54d4b7e6e46ca30cb4b5afc8657f0e447b9c95203f36fc8d2db40eb94048c46",
+      "size": 676528
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/images/cmdb-source-of-truth-isometric.png",
+      "sha256": "7e4f6d0347afd704fcd8c2a7a9275933c8e270a69c780d22cd4027caa4811186",
+      "size": 707402
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/images/endpoint-pc-isometric.png",
+      "sha256": "996b58f5cf3b676fd82551b7aa2a597469e2ee1b1ff71294e5d726dfa9d2cb64",
+      "size": 658155
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/images/enrollment-architecture-hero.png",
+      "sha256": "67aefa3f4553124ab4d132841bcf799c43c234214c3bd66a3a1119990a8e5d36",
+      "size": 839363
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/images/network-switch-isometric.png",
+      "sha256": "cf4731b0c759965e40517d18b75a5dd5372a15ccba7a3e19e8186c812dbbd975",
+      "size": 295225
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/images/wireless-access-point-isometric.png",
+      "sha256": "d798c8f28b40f78ec70ff426e45b92425a471570449835fb432d512f8c0c884d",
+      "size": 417689
+    },
+    {
+      "mode": "100644",
+      "path": "docs/assets/stylesheets/visuals.css",
+      "sha256": "6676b16859f01136e5efeb8a76c053dbc85dfb867ac841be725fe964ea0a9c83",
+      "size": 992
+    },
+    {
+      "mode": "100644",
       "path": "docs/concepts.md",
       "sha256": "15dcf0d5ed487d0f482eae08df9fab476b99e7aae9f15e889d8b6d6aea60ab72",
       "size": 2697
@@ -166,8 +208,8 @@
     {
       "mode": "100644",
       "path": "docs/index.md",
-      "sha256": "8bc84c067b44f4a6346a60f7dca5404a3170148851fbfa92340d90eceba176ac",
-      "size": 1915
+      "sha256": "120dacbc08f14e86000197d16abb3f92a2cea538f05d7113b23b498f2c392450",
+      "size": 2230
     },
     {
       "mode": "100644",
@@ -250,8 +292,8 @@
     {
       "mode": "100644",
       "path": "docs/why.md",
-      "sha256": "4383feac158522b80ab6df0875d0ea9b0937a539f79d23eb2462f69cdf6cd139",
-      "size": 4344
+      "sha256": "25e2789a65ca638629e842786268917430f5931f952b7242891d8569215efc9b",
+      "size": 5582
     },
     {
       "mode": "100644",
@@ -274,8 +316,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "02615b1ed57f84f11783f7861214590204037022a8992d246a07295523d3c269",
-      "size": 2058
+      "sha256": "575bc534287de5ca6e7a6f0c1aac3bc7803ee8a1733a5d939c561ce947be3d6a",
+      "size": 2104
     },
     {
       "mode": "100644",
@@ -1234,5 +1276,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "f36cba690795a302663174928b791bfa581009e1cb45cbc5a6178801bcacffb1"
+  "treeSha256": "d9b224dd0fdf7d8668bd23c4413a00fc9fccbf6f98f2a2138a939de27a2ce6e2"
 }

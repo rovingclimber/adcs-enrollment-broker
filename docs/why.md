@@ -44,6 +44,34 @@ allowlists the claims permitted by the certificate profile, and asks AD CS to
 issue a certificate containing that approved snapshot. In this implementation,
 deployment policy controls the exact subject and SAN encoding.
 
+<div class="asset-grid">
+  <figure class="asset-card">
+    <img src="assets/images/cmdb-source-of-truth-isometric.png"
+         alt="Isometric governed CMDB and verified database" loading="lazy">
+    <figcaption>Source of truth supplies governed facts</figcaption>
+  </figure>
+  <figure class="asset-card">
+    <img src="assets/images/endpoint-pc-isometric.png"
+         alt="Isometric desktop endpoint" loading="lazy">
+    <figcaption>Endpoint retains its private key</figcaption>
+  </figure>
+  <figure class="asset-card">
+    <img src="assets/images/broker-ca-server-isometric.png"
+         alt="Isometric broker and certificate authority servers" loading="lazy">
+    <figcaption>Broker governs claims; AD CS issues</figcaption>
+  </figure>
+  <figure class="asset-card">
+    <img src="assets/images/wireless-access-point-isometric.png"
+         alt="Isometric enterprise wireless access point" loading="lazy">
+    <figcaption>Access point carries the EAP-TLS exchange</figcaption>
+  </figure>
+  <figure class="asset-card">
+    <img src="assets/images/network-switch-isometric.png"
+         alt="Isometric managed network switch" loading="lazy">
+    <figcaption>Access network enforces the RADIUS result</figcaption>
+  </figure>
+</div>
+
 ```mermaid
 flowchart LR
     F[Governed endpoint facts] --> B[AD CS Enrollment Broker]

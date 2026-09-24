@@ -1,5 +1,11 @@
 # AD CS Enrollment Broker
 
+<p align="center">
+  <img src="docs/assets/images/enrollment-architecture-hero.png"
+       alt="Endpoint, network switch, enrollment broker and certificate authority"
+       width="100%">
+</p>
+
 ## Why this exists
 
 EAP-TLS proves that an endpoint holds a trusted private key, but authorization

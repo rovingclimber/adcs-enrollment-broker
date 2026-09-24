@@ -1,0 +1,55 @@
+.docs-hero {
+  margin: 1.5rem 0 2rem;
+  text-align: center;
+}
+
+.docs-hero img {
+  display: block;
+  width: min(100%, 72rem);
+  height: auto;
+  margin: 0 auto;
+}
+
+.docs-hero figcaption {
+  margin-top: 0.4rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.72rem;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 1.2rem 0 1.8rem;
+}
+
+.asset-card {
+  margin: 0;
+  padding: 0.8rem;
+  border: 0.05rem solid var(--md-default-fg-color--lightest);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--md-default-bg-color) 92%, var(--md-accent-fg-color));
+  text-align: center;
+}
+
+.asset-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.asset-card figcaption {
+  margin-top: 0.45rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.72rem;
+}
+
+@media screen and (max-width: 44rem) {
+  .asset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-card img {
+    max-height: 15rem;
+  }
+}

@@ -1,5 +1,11 @@
 # AD CS Enrollment Broker documentation
 
+<figure class="docs-hero">
+  <img src="assets/images/enrollment-architecture-hero.png"
+       alt="Isometric endpoint, network switch, enrollment broker and certificate authority connected in sequence">
+  <figcaption>From endpoint identity to governed certificate claims and network policy.</figcaption>
+</figure>
+
 EAP-TLS proves possession of a trusted private key, but authorization often
 depends on stable endpoint facts such as device class, use, or permitted access
 role. Without those facts in the credential, a RADIUS service must maintain
