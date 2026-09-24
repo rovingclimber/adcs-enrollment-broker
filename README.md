@@ -6,14 +6,18 @@
        width="100%">
 </p>
 
-## Why this exists
+## Your 802.1X works. Then someone asks for useful VLANs.
 
-EAP-TLS proves that an endpoint holds a trusted private key, but authorization
-often needs more than identity. Network policy may depend on stable facts such
-as what the endpoint is, what it is used for, or which access role it is
-eligible to receive. Without those facts in the credential, a RADIUS service
-must maintain extensive identity mappings or query another system during every
-authentication.
+EAP-TLS proves that an endpoint holds a trusted private key. Excellent. Network
+policy still needs to know whether that endpoint is a workstation, kiosk, lab
+instrument, or something that should be allowed near the finance VLAN only in
+the broadest geographical sense.
+
+You can teach RADIUS a mapping for every identity, hostname, or MAC address. You
+can put a live CMDB API call in every authentication. You can bend your Active
+Directory OU hierarchy around device purpose and hope the GPO consequences stay
+interesting rather than catastrophic. You can also declare segmentation
+overrated and go for lunch.
 
 AD CS Enrollment Broker moves that policy step to certificate enrollment. It
 authenticates the requester, reads governed endpoint facts, and places only
@@ -21,6 +25,11 @@ approved claims into a certificate issued by AD CS. RADIUS or another relying
 party can then validate the certificate and apply compact rules to those claims
 without depending on a live broker or inventory lookup for each authentication.
 The relying party still makes the final authorization decision.
+
+The endpoint keeps its private key. The client cannot select its own subject,
+SAN claims, template, or issuer. The certificate carries a governed snapshot,
+so certificate lifetime, renewal, and revocation still matter. Fun is welcome;
+hand-waving is not.
 
 See [Why this exists](docs/why.md) for the problem, tradeoffs, and certificate-
 freshness model.
