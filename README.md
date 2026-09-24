@@ -89,10 +89,10 @@ that startup rejects until an operator supplies reviewed deployment values.
 ## Docker Hub
 
 Published releases can be pulled from
-[`example/adcs-enrollment-broker`](https://hub.docker.com/r/example/adcs-enrollment-broker):
+[`rovingclimber/adcs-enrollment-broker`](https://hub.docker.com/r/rovingclimber/adcs-enrollment-broker):
 
 ```bash
-docker pull example/adcs-enrollment-broker:latest
+docker pull rovingclimber/adcs-enrollment-broker:latest
 docker compose up -d --no-build
 ```
 

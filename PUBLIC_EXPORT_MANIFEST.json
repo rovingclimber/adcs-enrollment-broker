@@ -10,8 +10,8 @@
     {
       "mode": "100644",
       "path": ".env.example",
-      "sha256": "cb3b10c505252ae64361bbc15db692d17b53b0f383b8835cd5c3fcc67ee7af1a",
-      "size": 2902
+      "sha256": "cac9dbb735a3f097f59011c1510243346775aaac46ad3a9404fbba3b04eee929",
+      "size": 2908
     },
     {
       "mode": "100644",
@@ -22,8 +22,8 @@
     {
       "mode": "100644",
       "path": ".github/workflows/container.yml",
-      "sha256": "6662d8d0301b7c2a138fc181c7735b9640aef5f0c427e0b6bf0cf0b3627f11b4",
-      "size": 5687
+      "sha256": "d7f3cf5e7673ab31d3790cb2c1ae8b483cf9611b5ff4c63c331a5215517f1ea3",
+      "size": 6855
     },
     {
       "mode": "100644",
@@ -58,8 +58,8 @@
     {
       "mode": "100644",
       "path": "Dockerfile",
-      "sha256": "4c598d96ca45e41cedb4f4a8e624ba7098a8350a72279cebc6f36b879f867084",
-      "size": 2647
+      "sha256": "29e252c066ac7e34d6acf211663afad5e6e23e7741431d3bbe26014af78bbc01",
+      "size": 2707
     },
     {
       "mode": "100644",
@@ -94,14 +94,14 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "e6e893c363dd6d3d5d399e8e924c22201eed09cd1e39243d50c23a2119359218",
-      "size": 4802
+      "sha256": "a643b388d8868d51e16997462bb9611ee0add36b2c902f73dbeec5009a545f98",
+      "size": 4820
     },
     {
       "mode": "100644",
       "path": "RELEASE_CHECKLIST.md",
-      "sha256": "42c694bd4895c945a78bf8ea5a9dc7453eb32048366486491620e764d1a9cd49",
-      "size": 3789
+      "sha256": "416b74e5a5fd8f448e98e80be4dcda40adbf17366f5bc9d1ae00d16b8b19f684",
+      "size": 3947
     },
     {
       "mode": "100644",
@@ -124,8 +124,8 @@
     {
       "mode": "100644",
       "path": "compose.yaml",
-      "sha256": "54eb075d2cb19204141fb176d822e4e6e0421514f106115dc2ad41a9c5f5610d",
-      "size": 1586
+      "sha256": "e57a733fb33cea6f4ae70c70224e1e05aea7c52efd64f8016d1476dd3ebb316c",
+      "size": 1592
     },
     {
       "mode": "100644",
@@ -202,8 +202,8 @@
     {
       "mode": "100644",
       "path": "docs/deployment/docker-hub.md",
-      "sha256": "b68c1b6a7dd017aa34c8c01ba2c50e0beb1e072a1353a7b93e0a076405865c8e",
-      "size": 2027
+      "sha256": "6de906e6ebdcb079c24e3b9d570d7db63d8490c759477aa6a2dbacad87684330",
+      "size": 2217
     },
     {
       "mode": "100644",
@@ -274,8 +274,8 @@
     {
       "mode": "100644",
       "path": "docs/security/release-governance.md",
-      "sha256": "e388df8ed5ee43a4e187fa596a91fd47d12e7115bdf989ff5085523e36db7436",
-      "size": 2307
+      "sha256": "e1f0a4ba04bc78bfe4974887457ccfb9b9ef01825c35859266a3fa3406ec8537",
+      "size": 2638
     },
     {
       "mode": "100644",
@@ -328,8 +328,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "f4478c35ca0f1cbedf2c7eab3fb44b21cce9cc17f6232bcad6a884632b6c1a43",
-      "size": 2155
+      "sha256": "8fd9d5841a0aa1d7d18382fa631db3ee768f8edba88d37cb644ac5bd2b2c5ad9",
+      "size": 2173
     },
     {
       "mode": "100644",
@@ -1252,8 +1252,8 @@
     {
       "mode": "100644",
       "path": "tools/test-dockerhub-workflow.py",
-      "sha256": "c17b8833d0a851b80f4d8349bfeb8b11672ecbbbf79e53024a33c6f4da43dd12",
-      "size": 1840
+      "sha256": "2bd5ec178f945efc03f3e7e4dbe3030fd34c5f05abf1f7f062fce7343055b0c0",
+      "size": 2717
     },
     {
       "mode": "100755",
@@ -1294,5 +1294,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "a4457ba64947b0e4dee7fd0044742b03d54c86e37b456eaa6a50fbda662cc12c"
+  "treeSha256": "20f9b47d4f993208a2c2dc2f6101ea3868286433c07087ef35de5afd61a228b2"
 }

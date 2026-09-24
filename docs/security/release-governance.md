@@ -34,6 +34,12 @@ Hub releases add a GitHub artifact attestation over the exact registry digest
 after the same local image passes runtime and vulnerability checks. This does
 not replace an independently governed production signing identity.
 
+Container publication accepts only stable semantic-version releases whose tag
+resolves to the checked-out commit and whose commit is reachable from protected
+`main`. Prereleases, malformed version tags, and tags outside `main` fail before
+registry authentication. `latest` therefore advances only with an admitted
+stable release.
+
 Use the root `RELEASE_CHECKLIST.md` for every candidate. A changed file,
 dependency, manifest, pipeline input, or generated artifact creates a new
 candidate and invalidates earlier approval.

@@ -2,7 +2,7 @@ services:
   broker:
     build:
       context: .
-    image: ${PKIPROXY_IMAGE:-example/adcs-enrollment-broker:latest}
+    image: ${PKIPROXY_IMAGE:-rovingclimber/adcs-enrollment-broker:latest}
     pull_policy: ${PKIPROXY_PULL_POLICY:-missing}
     env_file:
       - .env

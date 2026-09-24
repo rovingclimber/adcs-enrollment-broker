@@ -54,6 +54,8 @@ with an exact mirror of the reviewed candidate.
 - [ ] The public destination is empty and has no unrelated history.
 - [ ] The mirrored tree and commit are byte-for-byte the reviewed candidate;
   no release-time edits are allowed.
+- [ ] The stable semantic-version release tag resolves to the reviewed commit,
+  and that commit is reachable from protected `main`; prereleases are refused.
 - [ ] The owner explicitly authorizes the visibility change and release.
 - [ ] After publication, rerun disclosure and build gates from the public host,
   verify private vulnerability reporting, and record the public commit and

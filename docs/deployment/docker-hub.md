@@ -3,7 +3,7 @@
 Public releases are available as:
 
 ```text
-example/adcs-enrollment-broker
+rovingclimber/adcs-enrollment-broker
 ```
 
 The initial published platform is `linux/amd64`. Each GitHub release builds the
@@ -24,11 +24,11 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-Compose defaults to `example/adcs-enrollment-broker:latest`. For a
+Compose defaults to `rovingclimber/adcs-enrollment-broker:latest`. For a
 controlled deployment, pin the reviewed digest in `.env`:
 
 ```dotenv
-PKIPROXY_IMAGE=example/adcs-enrollment-broker@sha256:REPLACE_WITH_REVIEWED_DIGEST
+PKIPROXY_IMAGE=rovingclimber/adcs-enrollment-broker@sha256:REPLACE_WITH_REVIEWED_DIGEST
 PKIPROXY_PULL_POLICY=always
 ```
 
@@ -40,15 +40,18 @@ contains no deployment secrets or lab configuration.
 
 ## Tags and verification
 
-A published semantic-version release produces full-version, major/minor,
-commit, and `latest` tags. Treat tags as discovery aids and deploy by digest.
+A stable published semantic-version release such as `v1.2.3` produces
+full-version, major/minor, commit, and `latest` tags. Prereleases and
+non-semantic tags fail before registry login. The release tag must resolve to a
+commit reachable from protected `main`. Treat tags as discovery aids and deploy
+by digest.
 
 Verify the GitHub provenance attestation with the GitHub CLI:
 
 ```bash
 gh attestation verify \
-  oci://docker.io/example/adcs-enrollment-broker:VERSION \
-  -R example/adcs-enrollment-broker
+  oci://docker.io/rovingclimber/adcs-enrollment-broker:VERSION \
+  -R rovingclimber/adcs-enrollment-broker
 ```
 
 This public image is the lab proof-of-concept distribution described by the
