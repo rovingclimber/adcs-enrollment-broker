@@ -19,6 +19,18 @@ The default settings expose only a loopback development listener and keep
 enrollment disabled. A real deployment requires separately governed directory,
 CA, signer, trust, facts, state, TLS and Kerberos inputs.
 
+## Run the public image
+
+The [Docker Hub image](deployment/docker-hub.md) packages the same public source.
+After completing `.env` and its external mounts:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
+```
+
+Use a reviewed immutable digest for a controlled deployment.
+
 ## Build the documentation
 
 CI uses an immutable MkDocs Material container. With a local MkDocs Material

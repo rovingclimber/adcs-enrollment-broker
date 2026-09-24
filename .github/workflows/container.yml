@@ -1,0 +1,156 @@
+name: Container
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/container.yml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "Directory.Build.props"
+      - "PkiProxy.slnx"
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/container.yml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "Directory.Build.props"
+      - "PkiProxy.slnx"
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+  release:
+    types: [published]
+
+concurrency:
+  group: container-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: example/adcs-enrollment-broker
+  LOCAL_IMAGE: adcs-enrollment-broker:verify-${{ github.sha }}
+
+jobs:
+  build-scan-publish:
+    name: Build, test and scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Derive release metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+          labels: |
+            org.opencontainers.image.title=AD CS Enrollment Broker
+            org.opencontainers.image.description=Policy broker for native Windows enrollment through Microsoft AD CS
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/example/adcs-enrollment-broker
+
+      - name: Build tested image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.LOCAL_IMAGE }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Prove fail-closed runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id=$(docker run --detach --read-only --tmpfs /tmp:size=16m,mode=1777 \
+            --cap-drop ALL --security-opt no-new-privileges:true \
+            --publish 127.0.0.1::8080 "$LOCAL_IMAGE")
+          cleanup() { docker rm --force "$container_id" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          host_port=$(docker port "$container_id" 8080/tcp | awk -F: 'NR == 1 { print $NF }')
+          healthy=false
+          for _ in $(seq 1 30); do
+            if [ "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              "http://127.0.0.1:${host_port}/healthz" || true)" = 200 ]; then
+              healthy=true
+              break
+            fi
+            sleep 1
+          done
+          [ "$healthy" = true ] || { docker logs "$container_id"; exit 1; }
+          ready=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "http://127.0.0.1:${host_port}/readyz")
+          [ "$ready" = 503 ] || { echo "credential-free readiness returned $ready"; exit 1; }
+
+      - name: Scan the exact local image
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+          image --scanners vuln --pkg-types os,library --severity HIGH,CRITICAL
+          --exit-code 1 --no-progress "$LOCAL_IMAGE"
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'release'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push the exact scanned image
+        if: github.event_name == 'release'
+        id: push
+        shell: bash
+        env:
+          RELEASE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          first_digest=
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag "$LOCAL_IMAGE" "$tag"
+            output=$(docker push "$tag")
+            printf '%s\n' "$output"
+            digest=$(printf '%s\n' "$output" | sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' | tail -n 1)
+            [ -n "$digest" ] || { echo "Docker did not report a digest for $tag" >&2; exit 1; }
+            if [ -z "$first_digest" ]; then
+              first_digest=$digest
+            else
+              [ "$digest" = "$first_digest" ] || { echo "release tags resolved to different images" >&2; exit 1; }
+            fi
+          done <<< "$RELEASE_TAGS"
+          [ -n "$first_digest" ] || { echo "release produced no tags" >&2; exit 1; }
+          echo "digest=$first_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest the published image
+        if: github.event_name == 'release'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: index.docker.io/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

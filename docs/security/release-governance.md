@@ -27,11 +27,12 @@ evidence binds source, provenance, image/archive identities, scanner identity
 and report bytes, and refuses High or Critical vulnerabilities. Neither step
 pushes or deploys an image.
 
-Release provenance is currently an unsigned hash chain. It binds source tree,
+The private release evidence remains an unsigned hash chain binding source tree,
 public manifest, complete source inventory, build output, application SBOM,
-runtime package inventory, container labels, and admitted image. A future
-signature requires a separately governed signing identity, custody model,
-rotation plan, and verification policy.
+runtime package inventory, container labels, and admitted image. Public Docker
+Hub releases add a GitHub artifact attestation over the exact registry digest
+after the same local image passes runtime and vulnerability checks. This does
+not replace an independently governed production signing identity.
 
 Use the root `RELEASE_CHECKLIST.md` for every candidate. A changed file,
 dependency, manifest, pipeline input, or generated artifact creates a new

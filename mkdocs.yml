@@ -53,6 +53,7 @@ nav:
       - Certificate lifecycle: protocols/certificate-lifecycle.md
   - Deployment:
       - Topology and rollback: deployment/topology.md
+      - Docker Hub image: deployment/docker-hub.md
       - Configuration: reference/configuration.md
   - Operations: operations.md
   - Security:

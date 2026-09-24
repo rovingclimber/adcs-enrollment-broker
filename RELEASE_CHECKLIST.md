@@ -31,6 +31,8 @@ with an exact mirror of the reviewed candidate.
 - [ ] The exact provenance-bound release-image archive was scanned with native
   OS and application package inventories; the identity-bound report has no High
   or Critical vulnerability.
+- [ ] The Docker Hub workflow built and started the exact image, proved
+  credential-free readiness fails closed, and scanned it before registry login.
 - [ ] The SPDX SBOM, license results, source inventory, build provenance, and
   runtime package inventory describe the exact candidate.
 - [ ] Every license result is reviewed; required notices are present; no
@@ -56,6 +58,9 @@ with an exact mirror of the reviewed candidate.
 - [ ] After publication, rerun disclosure and build gates from the public host,
   verify private vulnerability reporting, and record the public commit and
   artifact digests.
+- [ ] Every published Docker tag resolves to the same scanned digest, the
+  GitHub artifact attestation verifies, and deployment documentation records
+  the immutable digest rather than relying on `latest`.
 
 Any failed or uncertain item stops publication. Fixes create a new candidate
 that repeats the checklist from the beginning.

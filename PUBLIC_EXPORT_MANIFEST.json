@@ -1,5 +1,5 @@
 {
-  "fileCount": 212,
+  "fileCount": 215,
   "files": [
     {
       "mode": "100644",
@@ -10,14 +10,20 @@
     {
       "mode": "100644",
       "path": ".env.example",
-      "sha256": "db6ecc5b67da624ab1fd47b4db8d651c7681dd44e65fd0ece54ad107853fdfbb",
-      "size": 2820
+      "sha256": "cb3b10c505252ae64361bbc15db692d17b53b0f383b8835cd5c3fcc67ee7af1a",
+      "size": 2902
     },
     {
       "mode": "100644",
       "path": ".gitattributes",
       "sha256": "7fd8caded08aace1b9fb79db6322c1ec88f6a97409f19a181233ad23cd7b21e8",
       "size": 187
+    },
+    {
+      "mode": "100644",
+      "path": ".github/workflows/container.yml",
+      "sha256": "6662d8d0301b7c2a138fc181c7735b9640aef5f0c427e0b6bf0cf0b3627f11b4",
+      "size": 5687
     },
     {
       "mode": "100644",
@@ -28,8 +34,8 @@
     {
       "mode": "100644",
       "path": ".gitlab-ci.yml",
-      "sha256": "186ffe437ef0866f0769adbff600fd7b135e1131108667a34adb985f47172e00",
-      "size": 9720
+      "sha256": "7fb1b55b03de759995833a7ebca4e23b4b9ce2691e0212e3c775cd240ca105b0",
+      "size": 9767
     },
     {
       "mode": "100644",
@@ -88,14 +94,14 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "84e1ede24639d296b87a5c1843f0438e89842f2e72bafe9f96275329505cf2dd",
-      "size": 4326
+      "sha256": "e6e893c363dd6d3d5d399e8e924c22201eed09cd1e39243d50c23a2119359218",
+      "size": 4802
     },
     {
       "mode": "100644",
       "path": "RELEASE_CHECKLIST.md",
-      "sha256": "0decc9fd86e33abc254fa366d67ee4473f5a47b6a82a6b2ed3d8cf273433c8f9",
-      "size": 3430
+      "sha256": "42c694bd4895c945a78bf8ea5a9dc7453eb32048366486491620e764d1a9cd49",
+      "size": 3789
     },
     {
       "mode": "100644",
@@ -118,8 +124,8 @@
     {
       "mode": "100644",
       "path": "compose.yaml",
-      "sha256": "426266ffcbf6dd6f644e5ed86fafcc2f2ada96a53dcd6d5ced1993640d79fa30",
-      "size": 1507
+      "sha256": "54eb075d2cb19204141fb176d822e4e6e0421514f106115dc2ad41a9c5f5610d",
+      "size": 1586
     },
     {
       "mode": "100644",
@@ -195,9 +201,15 @@
     },
     {
       "mode": "100644",
+      "path": "docs/deployment/docker-hub.md",
+      "sha256": "b68c1b6a7dd017aa34c8c01ba2c50e0beb1e072a1353a7b93e0a076405865c8e",
+      "size": 2027
+    },
+    {
+      "mode": "100644",
       "path": "docs/deployment/topology.md",
-      "sha256": "28180fa20065aefd9a2051d622678fca17143c7061da524cccb0fcf3fbb3ae8b",
-      "size": 1992
+      "sha256": "6edc657fba3e3024db23544c2ee9af849c621060a530c50e7cc16060174a393c",
+      "size": 2112
     },
     {
       "mode": "100644",
@@ -244,8 +256,8 @@
     {
       "mode": "100644",
       "path": "docs/quick-start.md",
-      "sha256": "635d1925cfefb6d1a1d3e1c388d3c607a9a80a390594fee766ff67f16afe503c",
-      "size": 1776
+      "sha256": "b7acf5ddfbc8969798ae5ceac87b4ef5958da456fe3639953b8c33ae1c056a6d",
+      "size": 2060
     },
     {
       "mode": "100644",
@@ -262,8 +274,8 @@
     {
       "mode": "100644",
       "path": "docs/security/release-governance.md",
-      "sha256": "8ef583d9ac7491474f455513683981baf4a19615534f30b5109f98f1d1278bb1",
-      "size": 2190
+      "sha256": "e388df8ed5ee43a4e187fa596a91fd47d12e7115bdf989ff5085523e36db7436",
+      "size": 2307
     },
     {
       "mode": "100644",
@@ -316,8 +328,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "575bc534287de5ca6e7a6f0c1aac3bc7803ee8a1733a5d939c561ce947be3d6a",
-      "size": 2104
+      "sha256": "f4478c35ca0f1cbedf2c7eab3fb44b21cce9cc17f6232bcad6a884632b6c1a43",
+      "size": 2155
     },
     {
       "mode": "100644",
@@ -1238,6 +1250,12 @@
       "size": 2090
     },
     {
+      "mode": "100644",
+      "path": "tools/test-dockerhub-workflow.py",
+      "sha256": "c17b8833d0a851b80f4d8349bfeb8b11672ecbbbf79e53024a33c6f4da43dd12",
+      "size": 1840
+    },
+    {
       "mode": "100755",
       "path": "tools/test-release-evidence.py",
       "sha256": "ec03cbc4af0b64b04301aa3dc9ea35f6bb438c524277f60d690bbfd7c034ff0c",
@@ -1276,5 +1294,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "d9b224dd0fdf7d8668bd23c4413a00fc9fccbf6f98f2a2138a939de27a2ce6e2"
+  "treeSha256": "a4457ba64947b0e4dee7fd0044742b03d54c86e37b456eaa6a50fbda662cc12c"
 }
