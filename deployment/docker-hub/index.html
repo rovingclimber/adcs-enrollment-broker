@@ -10,26 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://rovingclimber.github.io/adcs-enrollment-broker/">
+        <link rel="canonical" href="https://rovingclimber.github.io/adcs-enrollment-broker/deployment/docker-hub/">
       
       
+        <link rel="prev" href="../topology/">
       
-        <link rel="next" href="why/">
+      
+        <link rel="next" href="../../reference/configuration/">
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
     
     
       
-        <title>AD CS Enrollment Broker</title>
+        <title>Docker Hub image - AD CS Enrollment Broker</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.e53b48f4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.e53b48f4.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +50,9 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/visuals.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/visuals.css">
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ad-cs-enrollment-broker" class="md-skip">
+        <a href="#docker-hub-image" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +94,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="AD CS Enrollment Broker" class="md-header__button md-logo" aria-label="AD CS Enrollment Broker" data-md-component="logo">
+    <a href="../.." title="AD CS Enrollment Broker" class="md-header__button md-logo" aria-label="AD CS Enrollment Broker" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Docker Hub image
             
           </span>
         </div>
@@ -220,7 +222,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="AD CS Enrollment Broker" class="md-nav__button md-logo" aria-label="AD CS Enrollment Broker" data-md-component="logo">
+    <a href="../.." title="AD CS Enrollment Broker" class="md-nav__button md-logo" aria-label="AD CS Enrollment Broker" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -247,19 +249,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -270,7 +263,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -282,7 +274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="why/" class="md-nav__link">
+      <a href="../../why/" class="md-nav__link">
         
   
   
@@ -304,7 +296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="quick-start/" class="md-nav__link">
+      <a href="../../quick-start/" class="md-nav__link">
         
   
   
@@ -326,7 +318,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/" class="md-nav__link">
+      <a href="../../concepts/" class="md-nav__link">
         
   
   
@@ -391,7 +383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/system-context/" class="md-nav__link">
+      <a href="../../architecture/system-context/" class="md-nav__link">
         
   
   
@@ -414,7 +406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/components/" class="md-nav__link">
+      <a href="../../architecture/components/" class="md-nav__link">
         
   
   
@@ -437,7 +429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/trust-boundaries/" class="md-nav__link">
+      <a href="../../architecture/trust-boundaries/" class="md-nav__link">
         
   
   
@@ -510,7 +502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="protocols/enrollment-flows/" class="md-nav__link">
+      <a href="../../protocols/enrollment-flows/" class="md-nav__link">
         
   
   
@@ -533,7 +525,7 @@
   
   
     <li class="md-nav__item">
-      <a href="protocols/signer-flow/" class="md-nav__link">
+      <a href="../../protocols/signer-flow/" class="md-nav__link">
         
   
   
@@ -556,7 +548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="protocols/facts-flow/" class="md-nav__link">
+      <a href="../../protocols/facts-flow/" class="md-nav__link">
         
   
   
@@ -579,7 +571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="protocols/certificate-lifecycle/" class="md-nav__link">
+      <a href="../../protocols/certificate-lifecycle/" class="md-nav__link">
         
   
   
@@ -606,8 +598,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -618,11 +612,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
@@ -638,7 +632,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Deployment
@@ -652,7 +646,7 @@
   
   
     <li class="md-nav__item">
-      <a href="deployment/topology/" class="md-nav__link">
+      <a href="../topology/" class="md-nav__link">
         
   
   
@@ -672,10 +666,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="deployment/docker-hub/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Docker Hub image
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -686,6 +702,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#run-with-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run with Compose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tags-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tags and verification
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -698,7 +752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/configuration/" class="md-nav__link">
+      <a href="../../reference/configuration/" class="md-nav__link">
         
   
   
@@ -728,7 +782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="operations/" class="md-nav__link">
+      <a href="../../operations/" class="md-nav__link">
         
   
   
@@ -793,7 +847,7 @@
   
   
     <li class="md-nav__item">
-      <a href="security/trust-model/" class="md-nav__link">
+      <a href="../../security/trust-model/" class="md-nav__link">
         
   
   
@@ -816,7 +870,7 @@
   
   
     <li class="md-nav__item">
-      <a href="security/threat-model/" class="md-nav__link">
+      <a href="../../security/threat-model/" class="md-nav__link">
         
   
   
@@ -839,7 +893,7 @@
   
   
     <li class="md-nav__item">
-      <a href="security/release-governance/" class="md-nav__link">
+      <a href="../../security/release-governance/" class="md-nav__link">
         
   
   
@@ -869,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="troubleshooting/" class="md-nav__link">
+      <a href="../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -934,7 +988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/glossary/" class="md-nav__link">
+      <a href="../../reference/glossary/" class="md-nav__link">
         
   
   
@@ -1007,7 +1061,7 @@
   
   
     <li class="md-nav__item">
-      <a href="development/build-and-test/" class="md-nav__link">
+      <a href="../../development/build-and-test/" class="md-nav__link">
         
   
   
@@ -1030,7 +1084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1073,6 +1127,32 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#run-with-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run with Compose
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tags-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tags and verification
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1090,48 +1170,47 @@
   
 
 
-<h1 id="ad-cs-enrollment-broker">AD CS Enrollment Broker<a class="headerlink" href="#ad-cs-enrollment-broker" title="Permanent link">&para;</a></h1>
-<figure class="docs-hero">
-  <img src="assets/images/enrollment-architecture-hero.png"
-       alt="Isometric endpoint, network switch, enrollment broker and certificate authority connected in sequence">
-  <figcaption>Give the certificate useful facts. Let RADIUS keep making the decision.</figcaption>
-</figure>
-
-<p>Your 802.1X deployment works. Certificates authenticate machines. RADIUS says
-yes. Everyone celebrates until somebody asks for engineering devices in one
-VLAN, kiosks in another, and the frightening projector laptop somewhere it can
-do no harm.</p>
-<p>Now you need more than identity. You need stable facts about what each endpoint
-<em>is for</em>. The usual answers are a growing pile of RADIUS mappings, a live CMDB
-lookup in every authentication, or an OU hierarchy pressed into service as an
-asset taxonomy. There is also the traditional option of giving up and deciding
-that flat networks build character.</p>
-<p>AD CS Enrollment Broker moves that fact-resolution step to enrollment. It gives
-native Windows certificate-enrollment clients a narrow policy boundary in front
-of Microsoft Active Directory Certificate Services (AD CS). Windows keeps the
-client private key. The broker authenticates the requester, resolves governed
-identity and facts, constructs the approved certificate request, and validates
-the issued result. RADIUS can then apply compact local rules to approved
-certificate claims without calling the broker or your inventory system during
-every authentication.</p>
-<p>The broker is the useful kind of middle layer: absent from the live EAP-TLS
-exchange, strict about what enters a certificate, and deeply unimpressed by a
-client asking to choose its own identity.</p>
-<p>Start with <a href="why/">why this exists</a>, then use the
-<a href="quick-start/">quick start</a>, <a href="concepts/">concepts</a>,
-<a href="architecture/system-context/">system context</a>, and
-<a href="protocols/enrollment-flows/">protocol flows</a> to follow domain enrollment,
-bootstrap and renewal. The <a href="security/threat-model/">threat model</a> states the
-trusted components and failure behavior. Operators should review the
-<a href="deployment/topology/">deployment topology</a>, <a href="operations/">operations guide</a>
-and every item in the <a href="reference/configuration/">configuration reference</a>
-before enabling an authenticated listener.</p>
-<p>Security reports use the private process in the repository <code>SECURITY.md</code>.
-The repository <code>SUPPORT.md</code> defines the maintained boundary, and
-<a href="security/release-governance/">release governance</a> explains how a reviewed
-history-free candidate becomes an exact public mirror.</p>
-<p>This documentation describes the product boundary. It contains no live
-deployment status or private operational evidence.</p>
+<h1 id="docker-hub-image">Docker Hub image<a class="headerlink" href="#docker-hub-image" title="Permanent link">&para;</a></h1>
+<p>Public releases are available as:</p>
+<div class="highlight"><pre><span></span><code>rovingclimber/adcs-enrollment-broker
+</code></pre></div>
+<p>The initial published platform is <code>linux/amd64</code>. Each GitHub release builds the
+image from the exact public source, runs the contract suite inside the Docker
+build, starts the image without credentials to prove readiness fails closed,
+and scans that same local image for High and Critical OS and application
+vulnerabilities before any registry login or push. The pushed digest then
+receives a GitHub artifact attestation.</p>
+<h2 id="run-with-compose">Run with Compose<a class="headerlink" href="#run-with-compose" title="Permanent link">&para;</a></h2>
+<p>Copy <code>.env.example</code> to <code>.env</code>, replace every reserved placeholder, and prepare
+the external deployment directories described in the
+<a href="../../reference/configuration/">configuration reference</a>. Then:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>pull
+docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-build
+</code></pre></div>
+<p>Compose defaults to <code>rovingclimber/adcs-enrollment-broker:latest</code>. For a
+controlled deployment, pin the reviewed digest in <code>.env</code>:</p>
+<div class="highlight"><pre><span></span><code>PKIPROXY_IMAGE=rovingclimber/adcs-enrollment-broker@sha256:REPLACE_WITH_REVIEWED_DIGEST
+PKIPROXY_PULL_POLICY=always
+</code></pre></div>
+<p>The Compose file wires the broker process only. A usable enrollment service
+still requires private TLS and Kerberos material, directory authorization, an
+authoritative facts source, AD CS/CES trust, durable state, and the separately
+isolated signer described in the <a href="../topology/">deployment topology</a>. The image
+contains no deployment secrets or lab configuration.</p>
+<h2 id="tags-and-verification">Tags and verification<a class="headerlink" href="#tags-and-verification" title="Permanent link">&para;</a></h2>
+<p>A stable published semantic-version release such as <code>v1.2.3</code> produces
+full-version, major/minor, commit, and <code>latest</code> tags. Prereleases and
+non-semantic tags fail before registry login. The release tag must resolve to a
+commit reachable from protected <code>main</code>. Treat tags as discovery aids and deploy
+by digest.</p>
+<p>Verify the GitHub provenance attestation with the GitHub CLI:</p>
+<div class="highlight"><pre><span></span><code>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>oci://docker.io/rovingclimber/adcs-enrollment-broker:VERSION<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-R<span class="w"> </span>rovingclimber/adcs-enrollment-broker
+</code></pre></div>
+<p>This public image is the lab proof-of-concept distribution described by the
+project security policy. Its availability does not turn the broker, software
+PKCS#11 signer, or example Compose topology into a production-ready authority.</p>
 
 
 
@@ -1186,10 +1265,10 @@ deployment status or private operational evidence.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": ".", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.top", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
