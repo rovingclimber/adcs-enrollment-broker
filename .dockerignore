@@ -16,6 +16,11 @@
 !tests/PkiProxy.PublicContractTests/**/*.cs
 !tests/PkiProxy.PublicContractTests/PkiProxy.PublicContractTests.csproj
 !tests/PkiProxy.PublicContractTests/packages.lock.json
+!lab/
+!lab/device-facts/
+!lab/device-facts/*.json
+!smoke/
+!smoke/*.xml
 !tools/with-broker-credentials.sh
 !artifacts/api/**
 !artifacts/release/application.spdx.json

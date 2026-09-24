@@ -4,8 +4,8 @@
     {
       "mode": "100644",
       "path": ".dockerignore",
-      "sha256": "7c7686348d7b20af0460877f4f3da911a79eb8c347cdbbf7ac0a32c10fe6440e",
-      "size": 832
+      "sha256": "554ffc2524d51bc338556f0eb9e6b469dce25b1f029ff80d11ac6d02f8ea73e9",
+      "size": 903
     },
     {
       "mode": "100644",
@@ -1252,8 +1252,8 @@
     {
       "mode": "100644",
       "path": "tools/test-dockerhub-workflow.py",
-      "sha256": "2bd5ec178f945efc03f3e7e4dbe3030fd34c5f05abf1f7f062fce7343055b0c0",
-      "size": 2717
+      "sha256": "9756bd33e768416273afe94e1c9cd637dbddc6832504f91007dd8368dfb0bc77",
+      "size": 2984
     },
     {
       "mode": "100755",
@@ -1294,5 +1294,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "20f9b47d4f993208a2c2dc2f6101ea3868286433c07087ef35de5afd61a228b2"
+  "treeSha256": "bcc0f208d4f964403fe0dc4872d84aca6eed9c1a172b8f43c71aad170ff166f8"
 }

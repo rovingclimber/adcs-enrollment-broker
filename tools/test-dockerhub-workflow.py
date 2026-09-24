@@ -8,6 +8,7 @@ import re
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "container.yml"
 DOCKERFILE = ROOT / "Dockerfile"
+DOCKERIGNORE = ROOT / ".dockerignore"
 
 
 def require(condition: bool, message: str) -> None:
@@ -18,6 +19,7 @@ def require(condition: bool, message: str) -> None:
 def main() -> int:
     text = WORKFLOW.read_text(encoding="utf-8")
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+    dockerignore = DOCKERIGNORE.read_text(encoding="utf-8")
     require("pull_request_target" not in text, "privileged pull_request_target is forbidden")
     require("types: [published]" in text, "publication must require a published GitHub release")
     require(text.count("if: github.event_name == 'release'") == 4,
@@ -46,7 +48,9 @@ def main() -> int:
     require("COPY lab/device-facts/ lab/device-facts/" in dockerfile and
             "COPY smoke/ smoke/" in dockerfile,
             "the in-image contract run must include its public fixtures")
-    print("Docker Hub workflow contracts passed: 14.")
+    require("!lab/device-facts/*.json" in dockerignore and "!smoke/*.xml" in dockerignore,
+            "the reviewed fixture files must enter the Docker build context")
+    print("Docker Hub workflow contracts passed: 15.")
     return 0
 
 
