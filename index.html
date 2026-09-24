@@ -48,6 +48,8 @@
       
     
     
+      <link rel="stylesheet" href="assets/stylesheets/visuals.css">
+    
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -1066,6 +1068,12 @@
 
 
 <h1 id="ad-cs-enrollment-broker-documentation">AD CS Enrollment Broker documentation<a class="headerlink" href="#ad-cs-enrollment-broker-documentation" title="Permanent link">&para;</a></h1>
+<figure class="docs-hero">
+  <img src="assets/images/enrollment-architecture-hero.png"
+       alt="Isometric endpoint, network switch, enrollment broker and certificate authority connected in sequence">
+  <figcaption>From endpoint identity to governed certificate claims and network policy.</figcaption>
+</figure>
+
 <p>EAP-TLS proves possession of a trusted private key, but authorization often
 depends on stable endpoint facts such as device class, use, or permitted access
 role. Without those facts in the credential, a RADIUS service must maintain
