@@ -21,6 +21,10 @@ authorize a visibility change or release.
 Static analysis uses only the repository-controlled policy in
 `security/semgrep/pkiproxy-security.yml`; network registry aliases are forbidden.
 The retained SARIF must prove warning-free execution of the complete policy.
+The public CodeQL workflow uses immutable actions, the extended query suite,
+local-source threat modeling, and an explicit locked .NET build on `main` and
+same-repository pull requests. Generated `gh-pages` output is outside that
+source-analysis boundary.
 Runtime assurance builds a local archive from the exact CI application artifact,
 then scans that archive for both OS and application dependencies. Canonical
 evidence binds source, provenance, image/archive identities, scanner identity

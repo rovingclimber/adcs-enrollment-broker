@@ -26,6 +26,8 @@ with an exact mirror of the reviewed candidate.
 - [ ] Full-history and full-tree disclosure scans pass.
 - [ ] Locked restore, default contracts, the real SoftHSM contract, publish,
   static analysis, dependency analysis, and repository scanning pass.
+- [ ] CodeQL extended analysis passes against an explicit locked build of the
+  source branch; generated Pages output is not treated as C# source.
 - [ ] Semgrep used the tracked local policy, its policy digest is retained, and
   warning-free SARIF contains the complete expected rule inventory.
 - [ ] The exact provenance-bound release-image archive was scanned with native
