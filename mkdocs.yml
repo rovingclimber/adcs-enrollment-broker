@@ -1,8 +1,8 @@
 site_name: AD CS Enrollment Broker
 site_description: Policy and registration-authority broker for native Windows certificate enrollment
-site_url: https://example.github.io/adcs-enrollment-broker/
-repo_url: https://github.com/example/adcs-enrollment-broker
-repo_name: example/adcs-enrollment-broker
+site_url: https://rovingclimber.github.io/adcs-enrollment-broker/
+repo_url: https://github.com/rovingclimber/adcs-enrollment-broker
+repo_name: rovingclimber/adcs-enrollment-broker
 docs_dir: docs
 site_dir: site
 strict: true
@@ -53,6 +53,7 @@ nav:
       - Certificate lifecycle: protocols/certificate-lifecycle.md
   - Deployment:
       - Topology and rollback: deployment/topology.md
+      - Docker Hub image: deployment/docker-hub.md
       - Configuration: reference/configuration.md
   - Operations: operations.md
   - Security:

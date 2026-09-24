@@ -21,17 +21,28 @@ authorize a visibility change or release.
 Static analysis uses only the repository-controlled policy in
 `security/semgrep/pkiproxy-security.yml`; network registry aliases are forbidden.
 The retained SARIF must prove warning-free execution of the complete policy.
+The public CodeQL workflow uses immutable actions, the extended query suite,
+local-source threat modeling, and an explicit locked .NET build on `main` and
+same-repository pull requests. Generated `gh-pages` output is outside that
+source-analysis boundary.
 Runtime assurance builds a local archive from the exact CI application artifact,
 then scans that archive for both OS and application dependencies. Canonical
 evidence binds source, provenance, image/archive identities, scanner identity
 and report bytes, and refuses High or Critical vulnerabilities. Neither step
 pushes or deploys an image.
 
-Release provenance is currently an unsigned hash chain. It binds source tree,
+The private release evidence remains an unsigned hash chain binding source tree,
 public manifest, complete source inventory, build output, application SBOM,
-runtime package inventory, container labels, and admitted image. A future
-signature requires a separately governed signing identity, custody model,
-rotation plan, and verification policy.
+runtime package inventory, container labels, and admitted image. Public Docker
+Hub releases add a GitHub artifact attestation over the exact registry digest
+after the same local image passes runtime and vulnerability checks. This does
+not replace an independently governed production signing identity.
+
+Container publication accepts only stable semantic-version releases whose tag
+resolves to the checked-out commit and whose commit is reachable from protected
+`main`. Prereleases, malformed version tags, and tags outside `main` fail before
+registry authentication. `latest` therefore advances only with an admitted
+stable release.
 
 Use the root `RELEASE_CHECKLIST.md` for every candidate. A changed file,
 dependency, manifest, pipeline input, or generated artifact creates a new

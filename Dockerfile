@@ -20,6 +20,8 @@ COPY tests/PkiProxy.PublicContractTests/PkiProxy.PublicContractTests.csproj test
 RUN dotnet restore PkiProxy.slnx --locked-mode
 COPY src/PkiProxy.Api/ src/PkiProxy.Api/
 COPY tests/PkiProxy.PublicContractTests/ tests/PkiProxy.PublicContractTests/
+COPY lab/device-facts/ lab/device-facts/
+COPY smoke/ smoke/
 RUN pkcs11_root="$(mktemp -d)" \
     && export SOFTHSM2_CONF="$pkcs11_root/softhsm2.conf" \
     && mkdir "$pkcs11_root/tokens" \

@@ -49,4 +49,6 @@ generation, replay data or journals until the rollback window closes. A schema
 change needs an explicit forward and reverse compatibility decision.
 
 The included Compose file is a generic wiring example. It is not a production
-orchestration design, firewall policy, backup system or secret provider.
+orchestration design, firewall policy, backup system or secret provider. It
+defaults to the [public Docker Hub image](docker-hub.md), while retaining a
+source-build definition for development.

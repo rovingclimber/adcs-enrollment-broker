@@ -26,11 +26,15 @@ with an exact mirror of the reviewed candidate.
 - [ ] Full-history and full-tree disclosure scans pass.
 - [ ] Locked restore, default contracts, the real SoftHSM contract, publish,
   static analysis, dependency analysis, and repository scanning pass.
+- [ ] CodeQL extended analysis passes against an explicit locked build of the
+  source branch; generated Pages output is not treated as C# source.
 - [ ] Semgrep used the tracked local policy, its policy digest is retained, and
   warning-free SARIF contains the complete expected rule inventory.
 - [ ] The exact provenance-bound release-image archive was scanned with native
   OS and application package inventories; the identity-bound report has no High
   or Critical vulnerability.
+- [ ] The Docker Hub workflow built and started the exact image, proved
+  credential-free readiness fails closed, and scanned it before registry login.
 - [ ] The SPDX SBOM, license results, source inventory, build provenance, and
   runtime package inventory describe the exact candidate.
 - [ ] Every license result is reviewed; required notices are present; no
@@ -52,10 +56,15 @@ with an exact mirror of the reviewed candidate.
 - [ ] The public destination is empty and has no unrelated history.
 - [ ] The mirrored tree and commit are byte-for-byte the reviewed candidate;
   no release-time edits are allowed.
+- [ ] The stable semantic-version release tag resolves to the reviewed commit,
+  and that commit is reachable from protected `main`; prereleases are refused.
 - [ ] The owner explicitly authorizes the visibility change and release.
 - [ ] After publication, rerun disclosure and build gates from the public host,
   verify private vulnerability reporting, and record the public commit and
   artifact digests.
+- [ ] Every published Docker tag resolves to the same scanned digest, the
+  GitHub artifact attestation verifies, and deployment documentation records
+  the immutable digest rather than relying on `latest`.
 
 Any failed or uncertain item stops publication. Fixes create a new candidate
 that repeats the checklist from the beginning.

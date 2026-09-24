@@ -56,6 +56,7 @@ operational evidence, credentials, certificate identifiers, and Git history.
 - [Trust boundaries and durable state](docs/architecture/trust-boundaries.md)
 - [Protocol flows](docs/protocols/enrollment-flows.md)
 - [Deployment topology and rollback](docs/deployment/topology.md)
+- [Docker Hub image and Compose](docs/deployment/docker-hub.md)
 - [Operations](docs/operations.md) and [troubleshooting](docs/troubleshooting.md)
 - [Security model](docs/security/trust-model.md)
 - [Threat model](docs/security/threat-model.md)
@@ -84,6 +85,19 @@ with enrollment disabled. A real deployment requires explicit authenticated
 listener, directory, CA, signer, state-store, trust, and revocation settings.
 Start from `.env.example`; its real application keys contain reserved placeholders
 that startup rejects until an operator supplies reviewed deployment values.
+
+## Docker Hub
+
+Published releases can be pulled from
+[`rovingclimber/adcs-enrollment-broker`](https://hub.docker.com/r/rovingclimber/adcs-enrollment-broker):
+
+```bash
+docker pull rovingclimber/adcs-enrollment-broker:latest
+docker compose up -d --no-build
+```
+
+For controlled deployments, use the attested version to discover the image and
+then pin its immutable digest. See the [Docker Hub guide](docs/deployment/docker-hub.md).
 
 AD CS Enrollment Broker is licensed under the [Apache License 2.0](LICENSE). Public release
 also requires completion of the [public release checklist](RELEASE_CHECKLIST.md).
