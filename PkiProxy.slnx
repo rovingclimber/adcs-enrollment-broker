@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/PkiProxy.Api/PkiProxy.Api.csproj" />
+  <Project Path="tests/PkiProxy.PublicContractTests/PkiProxy.PublicContractTests.csproj" />
+</Solution>

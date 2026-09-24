@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="workbench-token" content="__WORKBENCH_TOKEN__">
+  <meta name="description" content="Review device facts and prepare certificate claim changes.">
+  <link rel="stylesheet" href="/publication.css">
+  <title>Device facts · LAB</title><link rel="stylesheet" href="/workbench.css">
+</head>
+<body>
+  <header><a class="brand" href="/">ID<span>LAB</span></a><span class="section-label">Device facts</span><span id="mode" class="mode">Draft workspace</span></header>
+  <main>
+    <section class="heading"><div><p class="eyebrow">CERTIFICATE IDENTITY</p><h1>Facts, not assumptions.</h1><p class="intro">Choose a device. Define its purpose. See what goes into its next certificate.</p></div><button id="export" class="primary" disabled>Validate &amp; download draft</button></section>
+    <div id="notice" role="status" aria-live="polite">Loading the operator-selected facts snapshot…</div>
+    <button id="review-publish" class="primary" hidden disabled>Review &amp; publish changes</button>
+    <div class="workspace">
+      <aside><div class="list-title"><h2>Devices <span id="count"></span></h2><button id="add" class="quiet" disabled>+ Add</button></div><label class="search-label" for="search">Find a device</label><input id="search" type="search" placeholder="Hostname or asset ID" autocomplete="off"><div id="devices" class="device-list"></div><div class="source"><span>Source revision</span><strong id="revision">—</strong><p>Drafts do not change live facts or existing certificates.</p></div></aside>
+      <section class="editor" aria-labelledby="editor-title"><div class="editor-heading"><div><p class="eyebrow">DEVICE RECORD</p><h2 id="editor-title">Select a device</h2></div><span id="dirty" class="badge" hidden>Edited</span></div>
+        <form id="device-form" hidden>
+          <div class="fields"><label>Hostname (FQDN)<input name="hostname" required maxlength="253" autocomplete="off"></label><label>Asset ID<input name="assetId" required maxlength="256" autocomplete="off"></label></div>
+          <label class="use-case">Use case<select name="useCase" required></select><span>RADIUS evaluates the signed use-case claim against its own rules.</span></label>
+          <div class="fields"><label>Device class<input name="deviceClass" required maxlength="256"></label><label>Location<input name="location" required maxlength="256"></label></div>
+          <label>Management domain<input name="managementDomain" required maxlength="256"></label>
+          <div class="form-actions"><button id="remove" type="button" class="danger">Remove from draft</button><button id="reset" type="button" class="quiet">Discard all changes</button></div>
+        </form>
+      </section>
+      <section class="claims" aria-labelledby="claims-title"><p class="eyebrow">NEXT CERTIFICATE</p><h2 id="claims-title">SAN claim preview</h2><p class="claim-note">Illustrative LAB namespace. The broker remains the authority at issuance.</p><ol id="claims"></ol><div class="boundary"><strong>Identity stays independent</strong><p>AD supplies the subject DN and DNS identity for domain devices. Editing these facts does not create an AD account or grant enrollment.</p></div></section>
+    </div>
+    <footer><span id="source-hash"></span><span>Review → validate → publish → renew</span></footer>
+  </main>
+  <dialog id="confirm-remove"><form method="dialog"><h2>Remove this device from the draft?</h2><p>This does not revoke its existing certificate. Publishing the change would remove its authoritative facts for future enrollment.</p><div class="dialog-actions"><button value="cancel">Keep device</button><button value="remove" class="danger">Remove device</button></div></form></dialog>
+  <script src="/workbench.js" defer></script>
+  <dialog id="confirm-publish" aria-labelledby="publish-title"><h2 id="publish-title">Review facts publication</h2><p>These changes affect future enrollment and renewal. Existing certificates and AD membership stay unchanged.</p><pre id="publish-diff"></pre><p id="publish-revision"></p><div class="dialog-actions"><button id="cancel-publish">Keep editing</button><button id="apply-publish" class="primary">Publish reviewed changes</button></div></dialog>
+</body>
+</html>

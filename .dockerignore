@@ -1,0 +1,26 @@
+# Send only reviewed build inputs and the protected CI artifact to Docker.
+**
+!Dockerfile
+!Dockerfile.release
+!.dockerignore
+!Directory.Build.props
+!PkiProxy.slnx
+!src/PkiProxy.Api/**/*.cs
+!src/PkiProxy.Api/PkiProxy.Api.csproj
+!src/PkiProxy.Api/packages.lock.json
+!src/PkiProxy.Api/appsettings.json
+!src/PkiProxy.Api/FactsWorkbench/Web/index.html
+!src/PkiProxy.Api/FactsWorkbench/Web/workbench.js
+!src/PkiProxy.Api/FactsWorkbench/Web/workbench.css
+!src/PkiProxy.Api/FactsWorkbench/Web/publication.css
+!tests/PkiProxy.PublicContractTests/**/*.cs
+!tests/PkiProxy.PublicContractTests/PkiProxy.PublicContractTests.csproj
+!tests/PkiProxy.PublicContractTests/packages.lock.json
+!tools/with-broker-credentials.sh
+!artifacts/api/**
+!artifacts/release/application.spdx.json
+!artifacts/release/provenance.json
+
+**/bin/**
+**/obj/**
+**/.git/**

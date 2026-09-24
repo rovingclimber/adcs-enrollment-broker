@@ -1,0 +1,7 @@
+# Exact C# method-signature false positives; these lines contain type names, not credential literals.
+tests/PkiProxy.PublicContractTests/IncomingRenewalCmcTests.cs:generic-api-key:50
+src/PkiProxy.Api/Signing/SignerProtocol.cs:generic-api-key:244
+src/PkiProxy.Api/Protocol/Cmc/ValidatedCmcRequest.cs:generic-api-key:161
+tests/PkiProxy.PublicContractTests/IsolatedSignerProtocolTests.cs:generic-api-key:193
+tests/PkiProxy.PublicContractTests/IsolatedSignerProtocolTests.cs:generic-api-key:258
+tests/PkiProxy.PublicContractTests/IsolatedSignerProtocolTests.cs:generic-api-key:385

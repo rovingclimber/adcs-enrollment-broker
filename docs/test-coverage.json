@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "included": 48,
+    "excluded": 21
+  },
+  "preservedCoverage": [
+    "SOAP/XML limits and protocol dispatch",
+    "Kerberos and certificate HTTP authorization",
+    "CSR/SPKI and authoritative identity binding",
+    "bootstrap pairing, quotas, durable state, filesystem and concurrency attacks",
+    "submission idempotence and ambiguous outcomes",
+    "signer policy, replay, explicit provider and real SoftHSM provider contract",
+    "certificate response, chain and revocation validation",
+    "facts update, audit and recovery state",
+    "configuration fail-closed behavior"
+  ],
+  "privateEvidenceBoundary": "Native/live proof executables, retained request/certificate fixtures, Windows deployment scripts, estate runtime inventory and GitLab-specific release admission remain only in the private repository.",
+  "tests": [
+    {
+      "path": "tests/Invoke-FactsWorkbenchHttpSmoke.ps1",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Invokes the private hosted workbench acceptance surface; HTTP authorization contracts remain public."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/AutonomousMtlsRenewalCanaryScriptTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Inspects a private Windows scheduled-renewal deployment script and retained operational identifiers."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapAssetBindingTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapAssetBindingTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapEnrollmentWorkflowTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapEnrollmentWorkflowTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapHostingIntegrationTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapHostingIntegrationTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapIngressAdmissionTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapIngressAdmissionTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapIssuanceWorkflowTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapIssuanceWorkflowTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapKerberosAuthenticationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapKerberosAuthenticationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapPairingTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapPairingTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapPolicyConfigurationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapPolicyConfigurationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BootstrapTechnicianAuthenticationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BootstrapTechnicianAuthenticationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BrokerConfigurationBoundaryTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BrokerConfigurationBoundaryTests.cs",
+      "reason": "Synthetic configuration contracts prove unknown sections and documentation placeholders fail closed."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BrokerPolicyConfigurationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BrokerPolicyConfigurationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/BrokerReadinessTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/BrokerReadinessTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CertificateConfigurationTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CertificateConfigurationTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CertificateEnabledConfigurationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CertificateEnabledConfigurationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CertificateHttpTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CertificateHttpTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CertificateSubjectEncoderTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CertificateSubjectEncoderTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CesResponseReaderTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CesResponseReaderTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CmcEnrollmentRequestTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CmcEnrollmentRequestTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/CmcRenewalSignatureTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/CmcRenewalSignatureTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/DeviceFactsEditorTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/DeviceFactsEditorTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/DeviceFactsFileTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/DeviceFactsFileTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/DeviceFactsPublisherTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/DeviceFactsPublisherTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/DirectoryIdentityTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/DirectoryIdentityTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/DisabledHostSmoke.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/DisabledHostSmoke.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/EnrollmentSubmissionJournalMarkerTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/EnrollmentSubmissionJournalMarkerTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FactsWorkbenchHostedAccessTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FactsWorkbenchHostedAccessTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FactsWorkbenchPublicationTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FactsWorkbenchPublicationTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FileBootstrapEnrollmentTransactionStoreTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FileBootstrapEnrollmentTransactionStoreTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FileBootstrapIntakeLedgerTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FileBootstrapIntakeLedgerTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FileBootstrapPairingTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FileBootstrapPairingTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/FileBootstrapStoreTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/FileBootstrapStoreTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/InboundSoapLimitsTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/InboundSoapLimitsTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/IncomingCmcRequestTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/IncomingCmcRequestTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/IncomingRenewalCmcTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/IncomingRenewalCmcTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/IsolatedSignerDeploymentTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Inspects the private container deployment checker and estate-specific runtime paths; signer protocol/provider contracts remain public."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/IsolatedSignerProtocolTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/IsolatedSignerProtocolTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/Issued27Diagnostic.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Consumes a retained native certificate response identified by a private CA request."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/IssuedCertificateValidationTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/IssuedCertificateValidationTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; the synthetic AIA no-fetch and pinned-root acceptance assertions remain intact."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/KerberosHttpTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/KerberosHttpTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/LinuxCesResponse27Proof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Consumes a private retained CES response and trust material."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/LinuxCesTransportProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Requires live private Kerberos/CES configuration."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/LinuxDirectoryProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Requires live private directory credentials and estate identifiers."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/LinuxKerberosTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Requires the private disposable KDC integration environment; transport/authz contracts remain public."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/LinuxLdapPolicyTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/LinuxLdapPolicyTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeBrokerCmcProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Consumes native captured enrollment material from private acceptance."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeCmcResponseProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Consumes retained private CA response fixtures."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeDomainEnrollmentTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/NativeDomainEnrollmentTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeDomainRenewalTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/NativeDomainRenewalTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeEnrollmentConfigurationTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/NativeEnrollmentConfigurationTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeIssuanceConfigurationProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Loads owner-only live issuance configuration."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeRenewalAuthorizationProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Loads owner-only live renewal identity and binding state."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/NativeRenewalFixtureInspection.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Captures or inspects private Windows certificate-store evidence."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/OpenSslCertificateVerifierTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/OpenSslCertificateVerifierTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/OperationalFactsManagementTests.cs",
+      "classification": "included-neutralized",
+      "publicPath": "tests/PkiProxy.PublicContractTests/OperationalFactsManagementTests.cs",
+      "reason": "Exact estate-like example values are deterministically replaced with reserved example identities; assertions are unchanged."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/PersistentRenewalScriptTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Inspects private Windows deployment and rollback scripts."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/Pkcs11SignerProviderTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/Pkcs11SignerProviderTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/ProductionSignerToolingTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Inspects private signer provisioning and CT staging scripts."
+    },
+    {
+      "path": "tests/PkiProxy.PublicContractTests/Program.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Replaced by a publication-safe runner with live/private modes removed."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/ReleasePackagingTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Asserts the private GitLab and estate release toolchain; public snapshot build is tested separately."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/Request31ReceiptReconciliation.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Operates on a retained private request journal recovery case."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/RuntimeInventoryCollectorTests.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Inspects private runtime-inventory and host identity tooling."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/SignerRotationPolicyTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/SignerRotationPolicyTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/TlsEndpointBindingTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/TlsEndpointBindingTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/WindowsCmcCesProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Executes a private AD CS native proof on Windows."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/WindowsDirectoryProof.cs",
+      "classification": "private-operational-excluded",
+      "publicPath": null,
+      "reason": "Executes a private directory proof on Windows."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/WstepResourceBoundsTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/WstepResourceBoundsTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/XcepProfileTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/XcepProfileTests.cs",
+      "reason": "Synthetic self-contained contract with no private estate dependency."
+    }
+  ]
+}

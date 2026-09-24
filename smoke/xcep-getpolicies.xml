@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:a="http://www.w3.org/2005/08/addressing"
+            xmlns:x="http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy"
+            xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <s:Header>
+    <a:Action s:mustUnderstand="1">http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/GetPolicies</a:Action>
+    <a:MessageID>urn:uuid:72a0b82e-6a79-4d22-b998-45cf61775e77</a:MessageID>
+    <a:To s:mustUnderstand="1">https://broker.invalid/cep/kerberos/service.svc/CEP</a:To>
+  </s:Header>
+  <s:Body>
+    <x:GetPolicies>
+      <x:client>
+        <x:lastUpdate i:nil="true" />
+        <x:preferredLanguage>en-GB</x:preferredLanguage>
+      </x:client>
+      <x:requestFilter>
+        <x:policyOIDs i:nil="true" />
+        <x:clientVersion>3</x:clientVersion>
+        <x:serverVersion>3</x:serverVersion>
+      </x:requestFilter>
+    </x:GetPolicies>
+  </s:Body>
+</s:Envelope>

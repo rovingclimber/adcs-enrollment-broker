@@ -1,0 +1,4 @@
+#review-publish{margin:0 0 18px}
+#confirm-publish{width:min(780px,calc(100vw - 32px));max-width:780px;max-height:85vh;overflow:auto}
+#publish-diff{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 Consolas,monospace;padding:16px;background:#f0f5ff;border:1px solid #d6e4ff;border-radius:8px;max-height:45vh;overflow:auto}
+#publish-revision{font-weight:600;color:#194a60}

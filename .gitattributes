@@ -1,0 +1,6 @@
+# Preserve executable/config line endings when checking out on Windows.
+lab/freeradius/** text eol=lf
+smoke/*.sh text eol=lf
+tools/*.sh text eol=lf
+LICENSE text eol=lf
+NOTICE text eol=lf

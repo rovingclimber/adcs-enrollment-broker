@@ -1,0 +1,211 @@
+stages:
+  - verify
+  - test
+  - assurance-build
+  - assurance-scan
+  - assurance-evidence
+
+# This pipeline is intentionally self-contained and never deploys. Every image
+# is digest pinned so a reviewed public commit identifies all executable inputs.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+default:
+  tags: [docker, linux]
+  interruptible: true
+  retry:
+    max: 1
+    when: [runner_system_failure]
+
+variables:
+  GIT_DEPTH: "0"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DEBIAN_FRONTEND: noninteractive
+
+disclosure:
+  stage: verify
+  image:
+    name: "zricethezav/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb"
+    entrypoint: [""]
+  script:
+    - gitleaks git --redact --no-banner --verbose --exit-code 1 --log-opts="--all" --gitleaks-ignore-path .gitleaksignore --report-format json --report-path gitleaks-history.json
+    - gitleaks dir . --redact --no-banner --verbose --exit-code 1 --gitleaks-ignore-path .gitleaksignore --report-format json --report-path gitleaks-tree.json
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [gitleaks-history.json, gitleaks-tree.json]
+
+build-test-evidence:
+  stage: test
+  image: "mcr.microsoft.com/dotnet/sdk:10.0.400@sha256:4beef5b8919dcaa2dc924233bd069257e883cc7a061e09088a97d152d6a48510"
+  timeout: 25m
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends openssl=3.0.13-0ubuntu3.15 python3=3.12.3-0ubuntu2.1 util-linux=2.39.3-9ubuntu6.6 softhsm2=2.6.1-2.2ubuntu3 opensc=0.25.0~rc1-1ubuntu0.2
+    - rm -rf /var/lib/apt/lists/*
+  script:
+    - python3 tools/release-evidence.py verify-manifest --root .
+    - python3 tools/check-governance.py .
+    - python3 tools/check-doc-links.py .
+    - python3 tools/test-doc-links.py
+    - python3 tools/test-release-evidence.py
+    - dotnet restore PkiProxy.slnx --locked-mode -p:NuGetAudit=true -p:NuGetAuditMode=all -p:TreatWarningsAsErrors=true
+    - dotnet run --no-restore --project tests/PkiProxy.PublicContractTests -c Release
+    - 'pkcs11_root=$(mktemp -d); export SOFTHSM2_CONF="$pkcs11_root/softhsm2.conf"; mkdir "$pkcs11_root/tokens"; printf "directories.tokendir = %s\nobjectstore.backend = file\nlog.level = ERROR\nslots.removable = false\n" "$pkcs11_root/tokens" > "$SOFTHSM2_CONF"; dotnet run --no-restore --project tests/PkiProxy.PublicContractTests -c Release -- --pkcs11-provider-contract; rm -rf "$pkcs11_root"'
+    - dotnet publish src/PkiProxy.Api/PkiProxy.Api.csproj -c Release --no-restore /p:UseAppHost=false /p:ContinuousIntegrationBuild=true /p:Deterministic=true /p:SourceRevisionId="$CI_COMMIT_SHA" /p:PathMap="$CI_PROJECT_DIR=/_/src" -o artifacts/api
+    - python3 tools/release-evidence.py create --root . --build artifacts/api --output artifacts/release
+    - python3 tools/release-evidence.py verify-ci --root . --manifest artifacts/release/provenance.json --build artifacts/api --allow-unprotected
+    - python3 tools/test-runtime-image-scan.py
+    - python3 tools/test-semgrep-sarif.py
+    - 'printf "RELEASE_SOURCE_COMMIT=%s\nRELEASE_SOURCE_CREATED=%s\nRELEASE_PIPELINE_ID=%s\nRELEASE_BUILD_JOB_ID=%s\nRELEASE_PROVENANCE_SHA256=%s\n" "$CI_COMMIT_SHA" "$(git show -s --format=%cI HEAD)" "$CI_PIPELINE_ID" "$CI_JOB_ID" "$(sha256sum artifacts/release/provenance.json | cut -d" " -f1)" > artifacts/release-image.env'
+  artifacts:
+    expire_in: 90 days
+    paths:
+      - artifacts/api/
+      - artifacts/release/
+    reports:
+      dotenv: artifacts/release-image.env
+
+docs-build:
+  stage: test
+  image:
+    name: "squidfunk/mkdocs-material:9.6.20@sha256:86d21da4f45f16e30774bf911e5b4795da13ce0cd197dbf8d3d059f256b2cc37"
+    entrypoint: [""]
+  script:
+    - mkdocs build --strict -f mkdocs.yml -d artifacts/docs/site
+    - python tools/check-doc-links.py .
+  artifacts:
+    expire_in: 30 days
+    paths: [artifacts/docs/site/]
+
+docs-mermaid:
+  stage: test
+  image:
+    name: "minlag/mermaid-cli:11.9.0@sha256:ed8df1d6ce4049724121f3e3f76c0d268b717d80483acca16fd37783de941879"
+    entrypoint: [""]
+  script:
+    - node tools/extract-mermaid.js docs artifacts/docs/mermaid
+    - 'for diagram in artifacts/docs/mermaid/*.mmd; do /home/mermaidcli/node_modules/.bin/mmdc -p /puppeteer-config.json --quiet --input "$diagram" --output "$diagram.svg"; done'
+  artifacts:
+    expire_in: 30 days
+    paths: [artifacts/docs/mermaid/]
+
+.release-assurance:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$RC_RELEASE_ASSURANCE == "true"'
+    - when: never
+
+release-sast-semgrep:
+  extends: .release-assurance
+  stage: assurance-scan
+  image:
+    name: "semgrep/semgrep:1.172.0-nonroot@sha256:d1012a3bf2acf47721216fbf7ff12d4c2971cc7f9c7b77cf6c6e9dcf006bd487"
+    entrypoint: [""]
+  variables:
+    SEMGREP_SEND_METRICS: "off"
+  script:
+    - sha256sum security/semgrep/pkiproxy-security.yml > semgrep-policy.sha256
+    - semgrep scan --config security/semgrep/pkiproxy-security.yml --metrics off --disable-version-check --error --sarif --output semgrep.sarif .
+    - python3 tools/check-semgrep-sarif.py semgrep.sarif security/semgrep/pkiproxy-security.yml semgrep-policy.sha256
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [semgrep.sarif, semgrep-policy.sha256]
+
+release-dependencies-osv:
+  extends: .release-assurance
+  stage: assurance-scan
+  image:
+    name: "ghcr.io/google/osv-scanner:v2.4.0-amd64@sha256:bcb04b6bab5ab578898b3ff8b81b381e7961b1eac6aa87639b53aaea0d266003"
+    entrypoint: [""]
+  script:
+    - /osv-scanner scan source --lockfile src/PkiProxy.Api/packages.lock.json --lockfile tests/PkiProxy.PublicContractTests/packages.lock.json --format json --output-file osv-results.json
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [osv-results.json]
+
+release-repository-trivy:
+  extends: .release-assurance
+  stage: assurance-scan
+  image:
+    name: "aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  cache:
+    key: trivy-db-v1
+    paths: [.trivycache/]
+  script:
+    - trivy fs --format cyclonedx --output release-sbom.cdx.json .
+    - trivy fs --scanners license --license-full --exit-code 0 --format json --output trivy-license-results.json .
+    - trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 --format json --output trivy-results.json .
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [release-sbom.cdx.json, trivy-license-results.json, trivy-results.json]
+
+release-runtime-image:
+  extends: .release-assurance
+  stage: assurance-build
+  image:
+    name: "ghcr.io/kaniko-build/dist/chainguard-dev-kaniko/executor@sha256:4c45fe0354126d79510013f43cd9abc9830a33308f4fb0fc7cab96c81313f104"
+    entrypoint: [""]
+  needs:
+    - job: build-test-evidence
+      artifacts: true
+  script:
+    - 'test "$(sha256sum artifacts/release/provenance.json | cut -d" " -f1)" = "$RELEASE_PROVENANCE_SHA256"'
+    - mkdir -p artifacts/runtime-assurance
+    - '/kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile.release" --destination "pkiproxy-assurance:$CI_COMMIT_SHA" --no-push --tar-path artifacts/runtime-assurance/runtime-image.tar --digest-file artifacts/runtime-assurance/runtime-image.digest --build-arg "SOURCE_COMMIT=$RELEASE_SOURCE_COMMIT" --build-arg "SOURCE_CREATED=$RELEASE_SOURCE_CREATED" --build-arg "CI_PIPELINE_ID=$RELEASE_PIPELINE_ID" --build-arg "CI_JOB_ID=$RELEASE_BUILD_JOB_ID" --build-arg "PROVENANCE_SHA256=$RELEASE_PROVENANCE_SHA256"'
+    - sha256sum artifacts/runtime-assurance/runtime-image.tar > artifacts/runtime-assurance/runtime-image.tar.sha256
+  artifacts:
+    expire_in: 90 days
+    paths: [artifacts/runtime-assurance/]
+
+release-runtime-trivy:
+  extends: .release-assurance
+  stage: assurance-scan
+  image:
+    name: "aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  cache:
+    key: trivy-db-v1
+    paths: [.trivycache/]
+  needs:
+    - job: release-runtime-image
+      artifacts: true
+  script:
+    - trivy --version > artifacts/runtime-assurance/trivy-version.txt
+    - trivy image --input artifacts/runtime-assurance/runtime-image.tar --scanners vuln --pkg-types os,library --list-all-pkgs --format json --output artifacts/runtime-assurance/trivy-runtime-image.json
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [artifacts/runtime-assurance/]
+
+release-runtime-evidence:
+  extends: .release-assurance
+  stage: assurance-evidence
+  image: "mcr.microsoft.com/dotnet/sdk:10.0.400@sha256:4beef5b8919dcaa2dc924233bd069257e883cc7a061e09088a97d152d6a48510"
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends python3=3.12.3-0ubuntu2.1
+    - rm -rf /var/lib/apt/lists/*
+  needs:
+    - job: build-test-evidence
+      artifacts: true
+    - job: release-runtime-trivy
+      artifacts: true
+  script:
+    - 'python3 tools/check-runtime-image-scan.py --report artifacts/runtime-assurance/trivy-runtime-image.json --image-archive artifacts/runtime-assurance/runtime-image.tar --image-digest artifacts/runtime-assurance/runtime-image.digest --provenance artifacts/release/provenance.json --scanner-version artifacts/runtime-assurance/trivy-version.txt --scanner-reference "aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c" --output artifacts/runtime-assurance/runtime-image-assurance.json'
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths: [artifacts/runtime-assurance/runtime-image-assurance.json]

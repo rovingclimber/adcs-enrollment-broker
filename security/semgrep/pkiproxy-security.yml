@@ -1,0 +1,122 @@
+rules:
+  - id: pkiproxy.csharp.xml-dtd-enabled
+    languages: [csharp]
+    severity: ERROR
+    message: XML DTD processing must remain prohibited.
+    patterns:
+      - pattern: $SETTINGS.DtdProcessing = DtdProcessing.Parse
+
+  - id: pkiproxy.csharp.xml-resolver-enabled
+    languages: [csharp]
+    severity: ERROR
+    message: XML parsing must not use an external resolver.
+    patterns:
+      - pattern-not: $SETTINGS.XmlResolver = null
+      - pattern: $SETTINGS.XmlResolver = $VALUE
+
+  - id: pkiproxy.csharp.weak-hash
+    languages: [csharp]
+    severity: ERROR
+    message: MD5 and SHA-1 are not permitted for security decisions.
+    pattern-either:
+      - pattern: MD5.Create(...)
+      - pattern: SHA1.Create(...)
+      - pattern: new HMACMD5(...)
+      - pattern: new HMACSHA1(...)
+
+  - id: pkiproxy.csharp.tls-validation-bypass
+    languages: [csharp]
+    severity: ERROR
+    message: TLS certificate validation must not be disabled.
+    pattern-either:
+      - pattern: $HANDLER.ServerCertificateCustomValidationCallback = (..., ..., ..., ...) => true
+      - pattern: $HANDLER.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+
+  - id: pkiproxy.csharp.shell-execution
+    languages: [csharp]
+    severity: ERROR
+    message: Broker code must not invoke a command through a shell.
+    pattern-either:
+      - pattern: new ProcessStartInfo(...) { UseShellExecute = true, ... }
+      - pattern: $START.UseShellExecute = true
+
+  - id: pkiproxy.csharp.binaryformatter
+    languages: [csharp]
+    severity: ERROR
+    message: BinaryFormatter is unsafe for untrusted state.
+    pattern-either:
+      - pattern: new BinaryFormatter(...)
+      - pattern: new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter(...)
+
+  - id: pkiproxy.csharp.insecure-random
+    languages: [csharp]
+    severity: WARNING
+    message: Security tokens must use a cryptographic random-number generator.
+    paths:
+      include:
+        - /src/**
+    pattern-either:
+      - pattern: new Random(...)
+      - pattern: Random.Shared.$METHOD(...)
+
+  - id: pkiproxy.csharp.unbounded-read-to-end
+    languages: [csharp]
+    severity: WARNING
+    message: Network and protocol inputs require an explicit bound before materialization.
+    paths:
+      include:
+        - /src/PkiProxy.Api/Protocol/**
+        - /src/PkiProxy.Api/Authentication/**
+    pattern-either:
+      - pattern: await $READER.ReadToEndAsync(...)
+      - pattern: $READER.ReadToEnd(...)
+
+  - id: pkiproxy.python.shell-true
+    languages: [python]
+    severity: ERROR
+    message: Python tooling must not execute untrusted text through a shell.
+    pattern-either:
+      - pattern: subprocess.$METHOD(..., shell=True, ...)
+      - pattern: os.system(...)
+
+  - id: pkiproxy.python.unsafe-yaml
+    languages: [python]
+    severity: ERROR
+    message: YAML input must use a safe loader.
+    pattern-either:
+      - pattern: yaml.load(...)
+      - pattern: yaml.unsafe_load(...)
+
+  - id: pkiproxy.python.tls-validation-bypass
+    languages: [python]
+    severity: ERROR
+    message: TLS verification must not be disabled.
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: urllib3.disable_warnings(...)
+
+  - id: pkiproxy.python.insecure-temporary-name
+    languages: [python]
+    severity: WARNING
+    message: Temporary files must be created atomically.
+    pattern-either:
+      - pattern: tempfile.mktemp(...)
+      - pattern: os.tmpnam(...)
+
+  - id: pkiproxy.shell.remote-pipe
+    languages: [bash]
+    severity: ERROR
+    message: Downloaded content must never be piped directly to an interpreter.
+    pattern-regex: '(?i)(curl|wget)[^\n|]*\|\s*(sh|bash|python|python3)'
+
+  - id: pkiproxy.shell.tls-verification-bypass
+    languages: [bash]
+    severity: ERROR
+    message: Shell tooling must not disable TLS verification.
+    pattern-regex: '(?i)\b(curl\s+[^\n]*(-k|--insecure)|wget\s+[^\n]*--no-check-certificate)\b'
+
+  - id: pkiproxy.shell.world-writable-secret
+    languages: [bash]
+    severity: ERROR
+    message: Security-sensitive files must not be made world writable.
+    pattern-regex: '(?i)\bchmod\s+(0777|777|o\+w)\b'

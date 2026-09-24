@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "useCases": [
+    { "id": "engineering", "label": "Engineering workstation" },
+    { "id": "lab-validation", "label": "Lab validation device" }
+  ],
+  "devices": [
+    {
+      "hostname": "CLIENT-PHYSICAL-001.example.test",
+      "assetId": "asset-physical-001",
+      "deviceClass": "workstation",
+      "useCase": "lab-validation",
+      "location": "office",
+      "managementDomain": "example.test"
+    },
+    {
+      "hostname": "CLIENT-001.example.test",
+      "assetId": "asset-virtual-001",
+      "deviceClass": "virtual-workstation",
+      "useCase": "engineering",
+      "location": "identity-lab",
+      "managementDomain": "example.test"
+    }
+  ]
+}

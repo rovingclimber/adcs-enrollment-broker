@@ -1,0 +1,48 @@
+services:
+  broker:
+    build:
+      context: .
+    image: pki-enrollment-broker:local
+    env_file:
+      - .env
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/config
+        target: /run/config
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/trust
+        target: /run/trust
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/facts
+        target: /run/facts
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/tls
+        target: /run/tls
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/secrets
+        target: /run/secrets
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/signer
+        target: /run/signer
+        read_only: true
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/signer-ipc
+        target: /run/signer-ipc
+      - type: bind
+        source: ${PKIPROXY_DEPLOYMENT_ROOT:?set PKIPROXY_DEPLOYMENT_ROOT}/state
+        target: /var/lib/pkiproxy
+    restart: unless-stopped

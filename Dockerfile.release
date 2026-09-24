@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.7
+# This image copies only the application bytes produced by protected CI.
+ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet@sha256:2d584d8147faddb0d678c5748d47953e5b8e18621ed4fb7049a91381d9d7746f
+ARG SOFTHSM2_VERSION=2.6.1-2.2ubuntu3
+ARG KRB5_VERSION=1.20.1-6ubuntu2.10
+ARG LIBLDAP2_VERSION=2.6.10+dfsg-0ubuntu0.24.04.1
+ARG SASL_GSSAPI_VERSION=2.1.28+dfsg1-5ubuntu3.1
+ARG KSTART_VERSION=4.3-1
+ARG SOURCE_COMMIT
+ARG SOURCE_CREATED
+ARG CI_PIPELINE_ID
+ARG CI_JOB_ID
+ARG PROVENANCE_SHA256
+
+FROM ${DOTNET_RUNTIME_IMAGE} AS runtime
+ARG SOFTHSM2_VERSION
+ARG KRB5_VERSION
+ARG LIBLDAP2_VERSION
+ARG SASL_GSSAPI_VERSION
+ARG KSTART_VERSION
+ARG SOURCE_COMMIT
+ARG SOURCE_CREATED
+ARG CI_PIPELINE_ID
+ARG CI_JOB_ID
+ARG PROVENANCE_SHA256
+LABEL org.opencontainers.image.title="AD CS Enrollment Broker" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.created="${SOURCE_CREATED}" \
+      org.example.pki-proxy.pipeline-id="${CI_PIPELINE_ID}" \
+      org.example.pki-proxy.job-id="${CI_JOB_ID}" \
+      org.example.pki-proxy.provenance-sha256="${PROVENANCE_SHA256}"
+WORKDIR /app
+USER root
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       "libgssapi-krb5-2=${KRB5_VERSION}" \
+       "krb5-user=${KRB5_VERSION}" \
+       "libldap2=${LIBLDAP2_VERSION}" \
+       "libsasl2-modules-gssapi-mit=${SASL_GSSAPI_VERSION}" \
+       "kstart=${KSTART_VERSION}" \
+       "libsofthsm2=${SOFTHSM2_VERSION}" \
+    && rm -rf /var/lib/apt/lists/*
+COPY --chown=$APP_UID:$APP_UID artifacts/api/ ./
+COPY --chown=$APP_UID:$APP_UID --chmod=0555 tools/with-broker-credentials.sh /app/with-broker-credentials.sh
+COPY --chown=root:root artifacts/release/application.spdx.json artifacts/release/provenance.json /usr/share/doc/pki-proxy/
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_EnableDiagnostics=0
+USER $APP_UID
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "PkiProxy.Api.dll"]

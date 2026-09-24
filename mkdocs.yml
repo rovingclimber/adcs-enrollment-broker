@@ -1,0 +1,61 @@
+site_name: AD CS Enrollment Broker
+site_description: Policy and registration-authority broker for native Windows certificate enrollment
+docs_dir: docs
+site_dir: site
+strict: true
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: cyan
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: cyan
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Overview: index.md
+  - Quick start: quick-start.md
+  - Concepts: concepts.md
+  - Architecture:
+      - System context: architecture/system-context.md
+      - Components: architecture/components.md
+      - Trust boundaries and state: architecture/trust-boundaries.md
+  - Protocols:
+      - Enrollment flows: protocols/enrollment-flows.md
+      - Signer and replay: protocols/signer-flow.md
+      - Facts updates: protocols/facts-flow.md
+      - Certificate lifecycle: protocols/certificate-lifecycle.md
+  - Deployment:
+      - Topology and rollback: deployment/topology.md
+      - Configuration: reference/configuration.md
+  - Operations: operations.md
+  - Security:
+      - Trust model: security/trust-model.md
+      - Threat model: security/threat-model.md
+      - Release governance: security/release-governance.md
+  - Troubleshooting: troubleshooting.md
+  - Reference:
+      - Glossary: reference/glossary.md
+  - Development:
+      - Build and test: development/build-and-test.md
+      - Contributing: contributing.md

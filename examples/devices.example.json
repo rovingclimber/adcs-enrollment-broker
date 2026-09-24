@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "useCases": [
+    { "id": "engineering", "label": "Engineering workstation" },
+    { "id": "validation", "label": "Validation device" }
+  ],
+  "devices": [
+    {
+      "hostname": "client-001.example.test",
+      "assetId": "asset-001",
+      "deviceClass": "workstation",
+      "useCase": "engineering",
+      "location": "site-a",
+      "managementDomain": "example.test"
+    }
+  ]
+}
