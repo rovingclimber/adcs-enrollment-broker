@@ -64,8 +64,8 @@
     {
       "mode": "100644",
       "path": "Dockerfile",
-      "sha256": "29e252c066ac7e34d6acf211663afad5e6e23e7741431d3bbe26014af78bbc01",
-      "size": 2707
+      "sha256": "d2206e1a6374afc8d4ecdd1ce73c20bdb548089ce1fdb7e7916c28e51c55b4fc",
+      "size": 2763
     },
     {
       "mode": "100644",
@@ -712,8 +712,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/PkiProxy.Api.csproj",
-      "sha256": "caa090da7bb06abe78c030d1062f89b7292d319b4ea4db0a4a3d117347a603fc",
-      "size": 541
+      "sha256": "59f0bc895bae7bbbabc5ba86a6ea6ae4d8f83994e3fe63d1c2e51a434c960736",
+      "size": 553
     },
     {
       "mode": "100644",
@@ -898,8 +898,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/packages.lock.json",
-      "sha256": "8d9064e747200b49eecae7df00c10edb525c673a51f900abcdd6481c4d41fcb4",
-      "size": 603
+      "sha256": "2f70473833cb0ad7d40359a8581706482c5a715106313827a66620b92422b2da",
+      "size": 620
     },
     {
       "mode": "100644",
@@ -1204,8 +1204,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/packages.lock.json",
-      "sha256": "9ebc5fa2dc2b437051642ed1be9e7a7dd0afa5db78704364b970f7091f3c5555",
-      "size": 759
+      "sha256": "c464731793cc7a5a652c3ff3ce4c85f0bad3779d681f6daed61fb968beca1cf8",
+      "size": 781
     },
     {
       "mode": "100755",
@@ -1306,5 +1306,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "a5dfda17765d1bdbdaa498c835c9ea9bb945fb7758297ed570d18db13dc7a3c8"
+  "treeSha256": "7b6575a5af8b687c96cd5bc10b69501527088eb5f02eac64198e97c1155af1af"
 }

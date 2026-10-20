@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.400@sha256:4beef5b8919dcaa2dc924233bd069257e883cc7a061e09088a97d152d6a48510
-ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet@sha256:2d584d8147faddb0d678c5748d47953e5b8e18621ed4fb7049a91381d9d7746f
+ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac
 ARG SOFTHSM2_VERSION=2.6.1-2.2ubuntu3
 ARG KRB5_VERSION=1.20.1-6ubuntu2.10
 ARG LIBLDAP2_VERSION=2.6.10+dfsg-0ubuntu0.24.04.1
