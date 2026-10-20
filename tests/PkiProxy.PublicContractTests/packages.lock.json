@@ -5,12 +5,12 @@
       "System.DirectoryServices.Protocols": {
         "type": "Transitive",
         "resolved": "10.0.13",
-        "contentHash": "Kxk1HC33KFt+Fh+66XkSQTp4xMZrvnzMNEw4rYJwPQPqM82K+/c6VXABNgsoUoRzCoVUkSvtcrkJ83XImWHYpA=="
+        "contentHash": "JZiWshNhK2+lbPnfV+JTYqKKrT27e5LRdbCU2SFkXwIIJPVKw/7KfrHU/DDbO3OXd4KwJZgAdyWbXl+kwzxWOw=="
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
         "resolved": "10.0.13",
-        "contentHash": "KH692n1QlH41LGLCit1xASxg9QEky9VY8NODv6gzV/eUHFXVTvRDLJyssMGaMxS9WfIXyJnSLgxeI8P8+ddLig=="
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       },
       "pkiproxy.api": {
         "type": "Project",
