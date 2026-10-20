@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="FactsWorkbench/Web/*" LogicalName="FactsWorkbench.%(Filename)%(Extension)" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="[10.0.11]" />
-    <PackageReference Include="System.DirectoryServices.Protocols" Version="[10.0.11]" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="[10.0.13]" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="[10.0.13]" />
   </ItemGroup>
 </Project>

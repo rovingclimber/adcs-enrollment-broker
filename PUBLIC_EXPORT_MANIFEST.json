@@ -712,8 +712,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/PkiProxy.Api.csproj",
-      "sha256": "caa090da7bb06abe78c030d1062f89b7292d319b4ea4db0a4a3d117347a603fc",
-      "size": 541
+      "sha256": "59f0bc895bae7bbbabc5ba86a6ea6ae4d8f83994e3fe63d1c2e51a434c960736",
+      "size": 553
     },
     {
       "mode": "100644",
@@ -898,8 +898,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/packages.lock.json",
-      "sha256": "8d9064e747200b49eecae7df00c10edb525c673a51f900abcdd6481c4d41fcb4",
-      "size": 603
+      "sha256": "329ca33c5d96dd9eecd198cb9166999af18727cc788aff77ba8b5ec21a7a6434",
+      "size": 622
     },
     {
       "mode": "100644",
@@ -1204,8 +1204,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/packages.lock.json",
-      "sha256": "9ebc5fa2dc2b437051642ed1be9e7a7dd0afa5db78704364b970f7091f3c5555",
-      "size": 759
+      "sha256": "4cbc99c8c886b819abb07052e3c1ff6e30fd162ce06cc198fe80a7d6362abcd7",
+      "size": 783
     },
     {
       "mode": "100755",
@@ -1306,5 +1306,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "a5dfda17765d1bdbdaa498c835c9ea9bb945fb7758297ed570d18db13dc7a3c8"
+  "treeSha256": "b8bca59cb35f2dd9a39cf5cb945ab3532f527cb34f9c4cea1589e66b37c7f886"
 }
