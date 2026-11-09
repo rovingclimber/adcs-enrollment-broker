@@ -322,8 +322,8 @@
     {
       "mode": "100644",
       "path": "docs/why.md",
-      "sha256": "c92692f35734a6e1e70ee6065a2f7732cf440a60af243ec19e3c000001322089",
-      "size": 9647
+      "sha256": "eaf94d3dafb8f78e924f10cabedcbd30837bf557b8c47c6c7403e73474914e53",
+      "size": 9596
     },
     {
       "mode": "100644",
@@ -364,8 +364,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "1bf9c1d92668b9aa0b62059f33e805bd5d118c5bab107f9a53ecaed37a233845",
-      "size": 2215
+      "sha256": "cd3f5d817431577d2340146f8ad63657aac6d6fbe0c0302723d6da0b5cac5801",
+      "size": 2230
     },
     {
       "mode": "100644",
@@ -1420,5 +1420,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "419742aa93e3895719594cda906271900de7c571fc1bfc7fbff1a9db4fa51f10"
+  "treeSha256": "0ac1dbc11057d15494813800c70e4572141a883f0f520b7f7207aaf8762d4986"
 }
