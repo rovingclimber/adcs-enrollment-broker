@@ -1222,9 +1222,15 @@ contains no deployment secrets or lab configuration.</p>
 <h2 id="tags-and-verification">Tags and verification<a class="headerlink" href="#tags-and-verification" title="Permanent link">&para;</a></h2>
 <p>A stable published semantic-version release such as <code>v1.2.3</code> produces
 full-version, major/minor, commit, and <code>latest</code> tags. Prereleases and
-non-semantic tags fail before registry login. The release tag must resolve to a
-commit reachable from protected <code>main</code>. Treat tags as discovery aids and deploy
-by digest.</p>
+non-semantic tags fail before registry login. The release tag must resolve to
+the current protected <code>main</code> commit.</p>
+<p>Before creating the version tag, wait for <strong>Release readiness</strong> to pass on
+that exact commit. It runs after CodeQL and requires a successful analysis of
+the current commit and zero open code scanning alerts. Run <strong>Release
+readiness</strong> from <code>main</code> again after resolving findings if the previous check
+failed. The container workflow repeats the check before building and again
+before registry login.</p>
+<p>Treat tags as discovery aids and deploy by digest.</p>
 <p>Verify the GitHub provenance attestation with the GitHub CLI:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>oci://docker.io/rovingclimber/adcs-enrollment-broker:VERSION<span class="w"> </span><span class="se">\</span>

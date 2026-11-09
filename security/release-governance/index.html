@@ -1150,11 +1150,15 @@ runtime package inventory, container labels, and admitted image. Public Docker
 Hub releases add a GitHub artifact attestation over the exact registry digest
 after the same local image passes runtime and vulnerability checks. This does
 not replace an independently governed production signing identity.</p>
-<p>Container publication accepts only stable semantic-version releases whose tag
-resolves to the checked-out commit and whose commit is reachable from protected
-<code>main</code>. Prereleases, malformed version tags, and tags outside <code>main</code> fail before
-registry authentication. <code>latest</code> therefore advances only with an admitted
-stable release.</p>
+<p>Stable version tags require the <strong>CodeQL release readiness</strong> check on the
+exact protected <code>main</code> commit. It verifies the completed CodeQL run and its
+uploaded analysis and refuses any open code scanning alert, including alerts
+outside the pull request diff. Review and resolve any open alerts before
+rerunning readiness on <code>main</code>.</p>
+<p>Container publication verifies the version tag and checked-out revision, then
+repeats the full CodeQL check before the build and before registry
+authentication. A missing, stale, failed, or unreadable scan blocks the
+release. <code>latest</code> advances only with an admitted stable release.</p>
 <p>Use the root <code>RELEASE_CHECKLIST.md</code> for every candidate. A changed file,
 dependency, manifest, pipeline input, or generated artifact creates a new
 candidate and invalidates earlier approval.</p>
