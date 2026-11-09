@@ -63,8 +63,9 @@ internal static class FileBootstrapPairingTests
                 Technician(), now.AddMinutes(1));
             Check(approved.Result == BootstrapPairingResult.Approved &&
                 approved.Audit?.AuthoritativeAssetId == "asset-physical-001", "third valid attempt can approve");
-            Check(Reopen().Lookup(ticket.RequestId, now.AddMinutes(1)).Status == BootstrapPairingStatus.Approved,
-                "approval survives reopen");
+            Check(Reopen().Lookup(ticket.RequestId, now.AddMinutes(1)) is
+                { Status: BootstrapPairingStatus.Approved, Audit.ApprovedDnsHostName: "device.test.example" },
+                "approval and exact hostname survive reopen");
             Check(Reopen().Approve(ticket.RequestId, ticket.DisplayCode, "asset-physical-001",
                 Technician(), now.AddMinutes(2)).Result == BootstrapPairingResult.InvalidState,
                 "approved request cannot replay");
@@ -426,13 +427,18 @@ internal static class FileBootstrapPairingTests
             Attempt(root, ticket, 2, now.AddSeconds(1));
         });
         Corrupt("attempt beyond budget", (root, ticket) => Attempt(root, ticket, 11, now));
-        foreach (var field in new[] { "TechnicianSubject", "AuthenticationMethod", "AssetId", "CsrSha256", "SpkiSha256", "TechnicianCapability" })
+        foreach (var field in new[] { "TechnicianSubject", "AuthenticationMethod", "AssetId", "CsrSha256", "SpkiSha256", "TechnicianCapability", "ApprovedDnsHostName" })
         {
             Corrupt("null claim " + field, (root, ticket) => Edit(Stage(root, ticket, "claimed"),
                 value => value[field] = null), claim: true);
             Corrupt("malformed claim " + field, (root, ticket) => Edit(Stage(root, ticket, "claimed"),
                 value => value[field] = "\n"), claim: true);
         }
+        Corrupt("legacy claim with hostname field", (root, ticket) => Edit(Stage(root, ticket, "claimed"), value =>
+        {
+            value["Version"] = 2;
+            value["ApprovedDnsHostName"] = null;
+        }), claim: true);
         foreach (var field in new[] { "TechnicianSubject", "AuthenticationMethod", "AssetId" })
             Corrupt("unbounded claim " + field, (root, ticket) => Edit(Stage(root, ticket, "claimed"),
                 value => value[field] = new string('a', field == "AuthenticationMethod" ? 65 : 257)), claim: true);
@@ -447,7 +453,7 @@ internal static class FileBootstrapPairingTests
         Corrupt("claimed without attempts", (root, ticket) => File.Delete(Stage(root, ticket, "attempt-01")), claim: true);
         Corrupt("claim with failed", (root, ticket) => File.Move(Stage(root, ticket, "ready"), Stage(root, ticket, "failed")), claim: true);
         Corrupt("approved without claim", (root, ticket) => File.Move(Stage(root, ticket, "claimed"), Stage(root, ticket, "approved")), claim: true);
-        foreach (var field in new[] { "Version", "RequestId", "TechnicianSubject", "AuthenticationMethod", "AssetId", "CsrSha256", "SpkiSha256", "TechnicianCapability", "At" })
+        foreach (var field in new[] { "Version", "RequestId", "TechnicianSubject", "AuthenticationMethod", "AssetId", "CsrSha256", "SpkiSha256", "TechnicianCapability", "ApprovedDnsHostName", "At" })
             Corrupt("approval mismatch " + field, (root, ticket) =>
             {
                 WritePrivate(Stage(root, ticket, "approved"), File.ReadAllText(Stage(root, ticket, "claimed")));
@@ -455,6 +461,7 @@ internal static class FileBootstrapPairingTests
                 {
                     if (field == "Version") value[field] = 1;
                     else if (field == "At") value[field] = now.AddMinutes(2);
+                    else if (field == "ApprovedDnsHostName") value[field] = "other.test.example";
                     else value[field] = new string('A', 64);
                 });
             }, claim: true);
@@ -536,7 +543,8 @@ internal static class FileBootstrapPairingTests
     private sealed class Assets(params string[] ids) : IImmutableAssetCatalog
     {
         private readonly HashSet<string> values = new(ids, StringComparer.Ordinal);
-        public bool Contains(string authoritativeAssetId) => values.Contains(authoritativeAssetId);
+        public string? FindDnsHostName(string authoritativeAssetId) =>
+            values.Contains(authoritativeAssetId) ? "device.test.example" : null;
     }
 
     private static bool IsOwnerOnly(string path)

@@ -119,9 +119,10 @@ internal sealed class NativeDomainEnrollmentAuthorizer(
         catch (CryptographicException)
         { return new(NativeDomainAuthorizationResult.InvalidCmc); }
 
+        if (!Guid.TryParseExact(computer.ObjectId, "D", out var objectId) || objectId == Guid.Empty)
+            return new(NativeDomainAuthorizationResult.InvalidDirectoryIdentity);
         try
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(computer.ObjectId);
             // Validate AD-owned fields before consulting SOT. The same encoder
             // checks the final identity; no alternate DN/DNS normalization path.
             _ = CmcEnrollmentRequestBuilder.EncodeIdentity(new(
@@ -132,7 +133,9 @@ internal sealed class NativeDomainEnrollmentAuthorizer(
 
         var facts = await deviceFactsSource.FindByDnsHostNameAsync(computer.DnsHostName, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        if (facts is null) return new(NativeDomainAuthorizationResult.UnknownDevice);
+        if (facts is null || facts.DirectoryObjectId != objectId ||
+            !string.Equals(facts.AuthoritativeDnsHostName, computer.DnsHostName, StringComparison.OrdinalIgnoreCase))
+            return new(NativeDomainAuthorizationResult.UnknownDevice);
         try
         {
             // SOT controls device facts, not the domain computer's DN or DNS SAN.

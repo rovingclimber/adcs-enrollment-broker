@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -134,14 +135,37 @@ internal static class BootstrapKerberosAuthenticationTests
                 status + " authentication result leaves approval body unread");
         }
 
-        var successContext = Context(AuthenticateResult.Success(ticket), null,
-            new MemoryStream("{\"TransactionId\":\"t\",\"DisplayCode\":\"123456\",\"AuthoritativeAssetId\":\"a\"}"u8.ToArray()));
-        successContext.Request.ContentType = "application/json";
-        successContext.Request.ContentLength = successContext.Request.Body.Length;
-        var acceptedPayload = await BootstrapApprovalRequestReader.ReadAsync(successContext,
-            BootstrapKerberosAuthenticationService.Scheme, default);
-        Check(acceptedPayload is { FailureStatus: null, Payload.TransactionId: "t" },
-            "only successful authentication permits bounded approval body parsing");
+        async Task<BootstrapApprovalIntake> ReadAuthenticatedApproval(string json)
+        {
+            using var body = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var context = Context(AuthenticateResult.Success(ticket), null, body);
+            context.Request.ContentType = "application/json";
+            context.Request.ContentLength = body.Length;
+            return await BootstrapApprovalRequestReader.ReadAsync(context,
+                BootstrapKerberosAuthenticationService.Scheme, default);
+        }
+
+        var acceptedIntake = await ReadAuthenticatedApproval(
+            """{"TransactionId":"t","DisplayCode":"123456","AuthoritativeAssetId":"a"}""");
+        Check(acceptedIntake is { Authentication.Succeeded: true, FailureStatus: null,
+                Payload: { TransactionId: "t", DisplayCode: "123456", AuthoritativeAssetId: "a" } },
+            "authenticated approval with unique properties preserves all payload fields");
+
+        foreach (var (name, json) in new[]
+        {
+            ("TransactionId",
+                """{"TransactionId":"t","DisplayCode":"123456","AuthoritativeAssetId":"a","TransactionId":"other"}"""),
+            ("AuthoritativeAssetId",
+                """{"TransactionId":"t","DisplayCode":"123456","AuthoritativeAssetId":"a","AuthoritativeAssetId":"other"}"""),
+            ("DisplayCode with an escaped property name",
+                """{"TransactionId":"t","DisplayCode":"123456","AuthoritativeAssetId":"a","\u0044isplayCode":"654321"}""")
+        })
+        {
+            var rejected = await ReadAuthenticatedApproval(json);
+            Check(rejected is { Authentication.Succeeded: true, Payload: null,
+                    FailureStatus: StatusCodes.Status400BadRequest },
+                $"authenticated approval rejects duplicate {name}");
+        }
 
         var transportSource = File.ReadAllText(Path.GetFullPath(
             "src/PkiProxy.Api/Authentication/KerberosHttpTransport.cs"));

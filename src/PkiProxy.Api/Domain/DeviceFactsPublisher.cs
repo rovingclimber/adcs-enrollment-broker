@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -12,11 +13,24 @@ internal sealed record FactsRecoverySummary(int Committed, int RecoveredCommitte
 
 // Linux operator-side publisher. All writers must share its advisory lock.
 // Never called by enrollment routes or the draft-only workbench.
-internal static class DeviceFactsPublisher
+internal static partial class DeviceFactsPublisher
 {
     private const UnixFileMode PrivateFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private const UnixFileMode PrivateDirectory = PrivateFile | UnixFileMode.UserExecute;
     private const UnixFileMode UntrustedWrite = UnixFileMode.GroupWrite | UnixFileMode.OtherWrite;
+    private const string HistoryName = ".facts-history";
+    private const string HistoryLockName = ".facts-history.publish.lock";
+    private const string BundleStagingName = ".bundle-staging";
+    private const string OutcomeStagingName = ".outcome-staging";
+    private const string BeforeName = "before.json";
+    private const string AfterName = "after.json";
+    private const string IntentName = "intent.json";
+    private const string CommittedName = "committed.json";
+    private const string AbortedName = "aborted.json";
+    private const int MaximumFactsBytes = 1_048_576;
+    private const int MaximumRecordBytes = 65_536;
+    private const int MaximumHistoryEntries = 10_000;
+    private const long MaximumHistoryBytes = 128L * MaximumFactsBytes;
     private static readonly JsonSerializerOptions StrictJson = new()
     {
         PropertyNameCaseInsensitive = false,
@@ -29,8 +43,6 @@ internal static class DeviceFactsPublisher
         string expectedSourceHash, string expectedDraftHash, Action<string>? checkpoint = null,
         string? operatorIdentity = null, string? operatorCapability = null)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Facts publication requires Linux.");
-        if (!Path.IsPathFullyQualified(target)) throw new ArgumentException("Absolute target required.");
         if (operatorIdentity is not null && !ValidOperatorIdentity(operatorIdentity))
             throw new ArgumentException("Bounded authenticated operator identity required.", nameof(operatorIdentity));
         if (operatorCapability is not null &&
@@ -39,39 +51,56 @@ internal static class DeviceFactsPublisher
             throw new ArgumentException("Exact facts-write capability required.", nameof(operatorCapability));
         if (operatorIdentity is null && operatorCapability is not null)
             throw new ArgumentException("Operator capability requires an authenticated identity.");
+        return Publish(target, draft, expectedSourceHash, expectedDraftHash, checkpoint,
+            (operatorIdentity, operatorCapability), (MaximumHistoryEntries, MaximumHistoryBytes));
+    }
+
+    // Exercise admission boundaries on small synthetic histories. Callers cannot raise the limits.
+    internal static FactsPublication Publish(string target, ReadOnlyMemory<byte> draft,
+        string expectedSourceHash, string expectedDraftHash, (int Entries, long Bytes) lowerHistoryLimits) =>
+        Publish(target, draft, expectedSourceHash, expectedDraftHash, null, (null, null),
+            (Math.Clamp(lowerHistoryLimits.Entries, 1, MaximumHistoryEntries),
+                Math.Min(lowerHistoryLimits.Bytes, MaximumHistoryBytes)));
+
+    private static FactsPublication Publish(string target, ReadOnlyMemory<byte> draft,
+        string expectedSourceHash, string expectedDraftHash, Action<string>? checkpoint,
+        (string? Identity, string? Capability) actor, (int Entries, long Bytes) limits)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Facts publication requires Linux.");
+        var (operatorIdentity, operatorCapability) = actor;
+        if (!Path.IsPathFullyQualified(target)) throw new ArgumentException("Absolute target required.");
         target = Path.GetFullPath(target);
-        var parent = Path.GetDirectoryName(target)!;
-        if (parent == "/") throw new ArgumentException("Dedicated facts directory required.");
-        CheckDirectory(parent);
+        var parent = CheckPublicationDirectory(target);
         CheckFile(target);
-        using var guard = AcquireLock(target);
+        using var guard = AcquireLock(target + ".publish.lock");
 
         var current = Read(target);
+        if (draft.Length is 0 or > MaximumFactsBytes)
+            throw new InvalidDataException("Unsupported draft facts file size.");
         VerifyHash(current, expectedSourceHash, "Source changed; review the current facts.");
         VerifyHash(draft.Span, expectedDraftHash, "Draft differs from the reviewed file.");
         var revision = ValidateDraft(current, draft);
         checkpoint?.Invoke("validated");
         var mode = File.GetUnixFileMode(target);
-        var history = Path.Combine(parent, ".facts-history");
-        if (!System.IO.Directory.Exists(history)) System.IO.Directory.CreateDirectory(history, PrivateDirectory);
-        CheckDirectory(history);
-        if (File.GetUnixFileMode(history) != PrivateDirectory) throw new IOException("Private history directory required.");
+        var history = Path.Combine(parent, HistoryName);
         var id = Guid.NewGuid().ToString("N");
         var recovery = Path.Combine(history, id);
-        System.IO.Directory.CreateDirectory(recovery, PrivateDirectory);
-        SyncDirectory(history);
         var sourceHash = Convert.ToHexString(SHA256.HashData(current));
         var draftHash = Convert.ToHexString(SHA256.HashData(draft.Span));
         var receipt = new FactsPublication(id, revision, sourceHash, draftHash, recovery);
-        WriteNew(Path.Combine(recovery, "before.json"), current, PrivateFile);
-        WriteNew(Path.Combine(recovery, "after.json"), draft.Span, PrivateFile);
-        WriteNew(Path.Combine(recovery, "intent.json"), JsonSerializer.SerializeToUtf8Bytes(new {
-            Version = 1, Publication = receipt, TargetName = Path.GetFileName(target),
-            OperatorUid = GetUid(), OperatorIdentity = operatorIdentity,
-            OperatorCapability = operatorCapability, PreparedAt = DateTimeOffset.UtcNow }), PrivateFile);
-        SyncDirectory(recovery);
+        var intent = JsonSerializer.SerializeToUtf8Bytes(new RecoveryIntent(1, receipt,
+            Path.GetFileName(target), GetUid(), DateTimeOffset.UtcNow, operatorIdentity, operatorCapability));
+        if (intent.Length > MaximumRecordBytes) throw new InvalidDataException("Facts intent exceeds its size limit.");
+        // Reserve a bounded outcome and a pending copy even if a crash leaves that copy retained.
+        var prospectiveBytes = current.Length + 2L * draft.Length + intent.Length + MaximumRecordBytes;
+        using var historyGuard = AcquireLock(Path.Combine(parent, HistoryLockName));
+        CheckHistoryAdmission(target, history, prospectiveBytes, limits);
+        System.IO.Directory.CreateDirectory(history, PrivateDirectory);
+        CheckPrivateDirectory(history);
+        StageBundle(history, recovery, current, draft, intent, checkpoint);
         SyncDirectory(parent);
-        var pending = Path.Combine(parent, ".facts-" + id + ".pending");
+        checkpoint?.Invoke("bundle-published");
+        var pending = PendingPath(parent, id);
         WriteNew(pending, draft.Span, mode);
         SyncDirectory(parent);
         checkpoint?.Invoke("before-rename");
@@ -83,98 +112,269 @@ internal static class DeviceFactsPublisher
         SyncDirectory(parent);
         checkpoint?.Invoke("after-rename");
         VerifyHash(Read(target), draftHash, "Published file changed; reconcile retained recovery records.");
-        WriteNew(Path.Combine(recovery, "committed.json"), JsonSerializer.SerializeToUtf8Bytes(new {
+        WriteOutcome(recovery, CommittedName, JsonSerializer.SerializeToUtf8Bytes(new {
             Version = 1, Transaction = id, PublishedSha256 = draftHash,
             OperatorIdentity = operatorIdentity, OperatorCapability = operatorCapability,
-            CommittedAt = DateTimeOffset.UtcNow }), PrivateFile);
-        SyncDirectory(recovery);
+            CommittedAt = DateTimeOffset.UtcNow }), checkpoint);
         return receipt;
     }
 
-    // Resolve only outcomes that can be proved from the durable before/after
-    // images and current target. Ambiguous state is a startup failure; no
-    // guessed retry or rollback is performed.
+    internal static void Revalidate(string target, string expectedSourceHash, CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Facts revalidation requires Linux.");
+        if (!Path.IsPathFullyQualified(target)) throw new ArgumentException("Absolute target required.");
+        target = Path.GetFullPath(target);
+        _ = CheckPublicationDirectory(target);
+        using var guard = AcquireLock(target + ".publish.lock");
+        if (GetPathStatus(target) is not { IsSingleRegular: true } entry ||
+            (entry.Permissions & UntrustedWrite) != 0)
+            throw new IOException("Existing operator-controlled regular facts file required.");
+        using var file = new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        VerifyHash(Read(file), expectedSourceHash, "Source changed during connector refresh; revalidation refused.");
+        cancellationToken.ThrowIfCancellationRequested();
+        // The digest covers the revision. A rename after open must not give its replacement this timestamp.
+        var handle = file.SafeFileHandle;
+        File.SetLastWriteTimeUtc(handle, DateTime.UtcNow);
+        RandomAccess.FlushToDisk(handle);
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static void StageBundle(string history, string recovery, ReadOnlyMemory<byte> current,
+        ReadOnlyMemory<byte> draft, byte[] intent, Action<string>? checkpoint)
+    {
+        var staging = Path.Combine(history, BundleStagingName);
+        System.IO.Directory.CreateDirectory(staging, PrivateDirectory);
+        CheckPrivateDirectory(staging);
+        WriteNew(Path.Combine(staging, BeforeName), current.Span, PrivateFile);
+        checkpoint?.Invoke("bundle-staging");
+        WriteNew(Path.Combine(staging, AfterName), draft.Span, PrivateFile);
+        WriteNew(Path.Combine(staging, IntentName), intent, PrivateFile);
+        SyncDirectory(staging);
+        if (!LinuxAtomicPublish.TryRenameNoReplace(staging, recovery))
+            throw new IOException("Facts recovery directory already exists.");
+        SyncDirectory(history);
+    }
+
+    // Resolve only outcomes proved by durable images and the current target.
     internal static FactsRecoverySummary Reconcile(string target)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Facts recovery requires Linux.");
         target = Path.GetFullPath(target);
         var parent = Path.GetDirectoryName(target)!;
-        CheckDirectory(parent); CheckFile(target);
-        using var guard = AcquireLock(target);
-        var history = Path.Combine(parent, ".facts-history");
-        if (!System.IO.Directory.Exists(history)) return new(0, 0, 0);
-        CheckDirectory(history);
-        if (File.GetUnixFileMode(history) != PrivateDirectory)
-            throw new IOException("Private facts recovery history required.");
-
-        var directories = System.IO.Directory.GetDirectories(history);
-        if (directories.Length > 10_000) throw new IOException("Facts recovery history is unbounded.");
-        var committed = 0; var recoveredCommitted = 0; var recoveredAborted = 0;
+        CheckDirectory(parent);
+        CheckFile(target);
+        using var guard = AcquireLock(target + ".publish.lock");
+        var history = Path.Combine(parent, HistoryName);
+        if (GetPathStatus(history) is null) return new(0, 0, 0);
+        using var historyGuard = AcquireLock(Path.Combine(parent, HistoryLockName));
+        var directories = HistoryDirectories(history, MaximumHistoryEntries);
+        var staging = Path.Combine(history, BundleStagingName);
+        if (GetPathStatus(staging) is not null)
+            DiscardBundleStaging(staging);
+        // A previous process can stop after a rename but before its directory sync.
+        SyncDirectory(history);
+        SyncDirectory(parent);
+        var committed = 0;
+        var recoveredCommitted = 0;
+        var recoveredAborted = 0;
         foreach (var recovery in directories.Order(StringComparer.Ordinal))
         {
-            var info = new DirectoryInfo(recovery);
-            if (info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint) ||
-                File.GetUnixFileMode(recovery) != PrivateDirectory ||
-                !Guid.TryParseExact(info.Name, "N", out _))
-                throw new IOException("Invalid facts recovery directory.");
-            var intent = ReadPrivateJson<RecoveryIntent>(Path.Combine(recovery, "intent.json"));
-            if (intent.Version != 1 || intent.Publication.Transaction != info.Name ||
-                intent.TargetName != Path.GetFileName(target) ||
-                intent.Publication.Revision < 1 || !ValidHash(intent.Publication.PreviousSha256) ||
-                !ValidHash(intent.Publication.PublishedSha256) ||
-                intent.OperatorIdentity is not null && !ValidOperatorIdentity(intent.OperatorIdentity) ||
-                intent.OperatorCapability is not null &&
-                    intent.OperatorCapability != PkiProxy.Authentication.TechnicianCapabilities.FactsWrite ||
-                intent.OperatorIdentity is null && intent.OperatorCapability is not null)
-                throw new InvalidDataException("Invalid facts recovery intent.");
-            var before = ReadPrivate(Path.Combine(recovery, "before.json"), 1_048_576);
-            var after = ReadPrivate(Path.Combine(recovery, "after.json"), 1_048_576);
-            VerifyHash(before, intent.Publication.PreviousSha256, "Facts recovery before-image hash mismatch.");
-            VerifyHash(after, intent.Publication.PublishedSha256, "Facts recovery after-image hash mismatch.");
-            _ = JsonFileDeviceFactsSource.Parse(before, null);
-            _ = JsonFileDeviceFactsSource.Parse(after, null);
-            var committedPath = Path.Combine(recovery, "committed.json");
-            var abortedPath = Path.Combine(recovery, "aborted.json");
-            if (File.Exists(committedPath) && File.Exists(abortedPath))
-                throw new InvalidDataException("Conflicting facts recovery outcome markers.");
-            if (File.Exists(committedPath))
+            var intent = ReadIntent(target, recovery);
+            VerifyRecoveryImage(recovery, BeforeName, intent.Publication.PreviousSha256);
+            VerifyRecoveryImage(recovery, AfterName, intent.Publication.PublishedSha256);
+            var outcome = ReadOutcome(recovery, intent);
+            var outcomeStaging = Path.Combine(recovery, OutcomeStagingName);
+            if (GetPathStatus(outcomeStaging) is not null)
             {
-                var marker = ReadPrivateJson<RecoveryCommit>(committedPath);
-                if (marker.Version != 1 || marker.Transaction != info.Name ||
-                    marker.PublishedSha256 != intent.Publication.PublishedSha256 ||
-                    marker.OperatorIdentity != intent.OperatorIdentity ||
-                    marker.OperatorCapability != intent.OperatorCapability)
-                    throw new InvalidDataException("Invalid facts commit marker.");
-                committed++; continue;
+                CheckScratchFile(outcomeStaging);
+                File.Delete(outcomeStaging);
             }
-            if (File.Exists(abortedPath))
+            if (outcome is null)
             {
-                var marker = ReadPrivateJson<RecoveryAbort>(abortedPath);
-                if (marker.Version != 1 || marker.Transaction != info.Name ||
-                    marker.PreviousSha256 != intent.Publication.PreviousSha256 ||
-                    marker.OperatorIdentity != intent.OperatorIdentity ||
-                    marker.OperatorCapability != intent.OperatorCapability)
-                    throw new InvalidDataException("Invalid facts abort marker.");
-                recoveredAborted++; continue;
+                outcome = RecoverOutcome(target, recovery, intent);
+                if (outcome == CommittedName)
+                {
+                    recoveredCommitted++;
+                    continue;
+                }
+                recoveredAborted++;
+                continue;
             }
-            var currentHash = Convert.ToHexString(SHA256.HashData(Read(target)));
-            if (currentHash == intent.Publication.PublishedSha256)
-            {
-                WriteNew(committedPath, JsonSerializer.SerializeToUtf8Bytes(new RecoveryCommit(1,
-                    info.Name, intent.Publication.PublishedSha256, DateTimeOffset.UtcNow,
-                    true, intent.OperatorIdentity, intent.OperatorCapability)), PrivateFile);
-                SyncDirectory(recovery); recoveredCommitted++;
-            }
-            else if (currentHash == intent.Publication.PreviousSha256)
-            {
-                WriteNew(abortedPath, JsonSerializer.SerializeToUtf8Bytes(new RecoveryAbort(1,
-                    info.Name, intent.Publication.PreviousSha256, intent.OperatorIdentity,
-                    DateTimeOffset.UtcNow, intent.OperatorCapability)), PrivateFile);
-                SyncDirectory(recovery); recoveredAborted++;
-            }
-            else throw new IOException("Facts recovery target matches neither retained image.");
+            SyncDirectory(recovery);
+            if (outcome == CommittedName) committed++;
+            else recoveredAborted++;
         }
         return new(committed, recoveredCommitted, recoveredAborted);
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static string RecoverOutcome(string target, string recovery, RecoveryIntent intent)
+    {
+        var publication = intent.Publication;
+        var currentHash = Convert.ToHexString(SHA256.HashData(Read(target)));
+        if (currentHash == publication.PublishedSha256)
+        {
+            WriteOutcome(recovery, CommittedName, JsonSerializer.SerializeToUtf8Bytes(new RecoveryCommit(1,
+                publication.Transaction, publication.PublishedSha256, DateTimeOffset.UtcNow,
+                true, intent.OperatorIdentity, intent.OperatorCapability)));
+            return CommittedName;
+        }
+        if (currentHash != publication.PreviousSha256)
+            throw new IOException("Facts recovery target matches neither retained image.");
+        WriteOutcome(recovery, AbortedName, JsonSerializer.SerializeToUtf8Bytes(new RecoveryAbort(1,
+            publication.Transaction, publication.PreviousSha256, intent.OperatorIdentity,
+            DateTimeOffset.UtcNow, intent.OperatorCapability)));
+        return AbortedName;
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static void WriteOutcome(string recovery, string name, ReadOnlySpan<byte> bytes,
+        Action<string>? checkpoint = null)
+    {
+        var staging = Path.Combine(recovery, OutcomeStagingName);
+        WriteNew(staging, bytes, PrivateFile);
+        checkpoint?.Invoke("outcome-staged");
+        if (!LinuxAtomicPublish.TryRenameNoReplace(staging, Path.Combine(recovery, name)))
+            throw new IOException("Facts recovery outcome already exists.");
+        SyncDirectory(recovery);
+    }
+
+    private static void CheckHistoryAdmission(string target, string history, long bytes,
+        (int Entries, long Bytes) limits)
+    {
+        if (bytes > limits.Bytes)
+            throw new IOException("Facts history byte limit reached.");
+        var directories = GetPathStatus(history) is null ? [] : HistoryDirectories(history, limits.Entries - 1);
+        if (GetPathStatus(Path.Combine(history, BundleStagingName)) is not null)
+            throw new IOException("Unpublished facts recovery staging requires reconciliation.");
+        var parent = Path.GetDirectoryName(target)!;
+        foreach (var recovery in directories)
+        {
+            var intent = ReadIntent(target, recovery);
+            var outcome = ReadOutcome(recovery, intent);
+            if (outcome is null || GetPathStatus(Path.Combine(recovery, OutcomeStagingName)) is not null)
+                throw new IOException("Unresolved facts recovery requires reconciliation.");
+            bytes += PrivateFileSize(Path.Combine(recovery, BeforeName), MaximumFactsBytes)
+                + PrivateFileSize(Path.Combine(recovery, AfterName), MaximumFactsBytes)
+                + PrivateFileSize(Path.Combine(recovery, IntentName), MaximumRecordBytes)
+                + PrivateFileSize(Path.Combine(recovery, outcome), MaximumRecordBytes)
+                + PendingSize(PendingPath(parent, intent.Publication.Transaction));
+            if (bytes > limits.Bytes)
+                throw new IOException("Facts history byte limit reached.");
+        }
+        // A marker observed after an interrupted marker rename might not have been synced yet.
+        foreach (var recovery in directories)
+            SyncDirectory(recovery);
+    }
+
+    private static List<string> HistoryDirectories(string history, int maximumEntries)
+    {
+        CheckPrivateDirectory(history);
+        var directories = new List<string>();
+        foreach (var entry in System.IO.Directory.EnumerateFileSystemEntries(history))
+        {
+            var name = Path.GetFileName(entry);
+            if (name == BundleStagingName) continue;
+            if (!Guid.TryParseExact(name, "N", out _))
+                throw new IOException("Invalid facts recovery directory.");
+            if (directories.Count == maximumEntries)
+                throw new IOException("Facts history transaction limit reached.");
+            directories.Add(entry);
+        }
+        return directories;
+    }
+
+    private static RecoveryIntent ReadIntent(string target, string recovery)
+    {
+        CheckPrivateDirectory(recovery);
+        if (System.IO.Directory.EnumerateFileSystemEntries(recovery).Any(entry =>
+            Path.GetFileName(entry) is not (BeforeName or AfterName or IntentName or
+                CommittedName or AbortedName or OutcomeStagingName)))
+            throw new IOException("Unknown facts recovery entry.");
+        var intent = ReadPrivateJson<RecoveryIntent>(Path.Combine(recovery, IntentName));
+        var publication = intent.Publication;
+        if (intent.Version != 1 || publication is null || publication.Transaction != Path.GetFileName(recovery) ||
+            intent.TargetName != Path.GetFileName(target) || publication.Revision < 1 ||
+            !ValidHash(publication.PreviousSha256) || !ValidHash(publication.PublishedSha256) ||
+            !ValidRecoveryActor(intent.OperatorIdentity, intent.OperatorCapability))
+            throw new InvalidDataException("Invalid facts recovery intent.");
+        return intent;
+    }
+
+    private static bool ValidRecoveryActor(string? identity, string? capability) =>
+        (identity is null || ValidOperatorIdentity(identity)) &&
+        (capability is null || identity is not null &&
+            capability == PkiProxy.Authentication.TechnicianCapabilities.FactsWrite);
+
+    private static string? ReadOutcome(string recovery, RecoveryIntent intent)
+    {
+        var committedPath = Path.Combine(recovery, CommittedName);
+        var abortedPath = Path.Combine(recovery, AbortedName);
+        if (GetPathStatus(committedPath) is not null)
+        {
+            if (GetPathStatus(abortedPath) is not null)
+                throw new InvalidDataException("Conflicting facts recovery outcome markers.");
+            var marker = ReadPrivateJson<RecoveryCommit>(committedPath);
+            if (marker.Version != 1 || marker.Transaction != intent.Publication.Transaction ||
+                marker.PublishedSha256 != intent.Publication.PublishedSha256 ||
+                marker.OperatorIdentity != intent.OperatorIdentity ||
+                marker.OperatorCapability != intent.OperatorCapability)
+                throw new InvalidDataException("Invalid facts commit marker.");
+            return CommittedName;
+        }
+        if (GetPathStatus(abortedPath) is null) return null;
+        var abort = ReadPrivateJson<RecoveryAbort>(abortedPath);
+        if (abort.Version != 1 || abort.Transaction != intent.Publication.Transaction ||
+            abort.PreviousSha256 != intent.Publication.PreviousSha256 ||
+            abort.OperatorIdentity != intent.OperatorIdentity ||
+            abort.OperatorCapability != intent.OperatorCapability)
+            throw new InvalidDataException("Invalid facts abort marker.");
+        return AbortedName;
+    }
+
+    private static void VerifyRecoveryImage(string recovery, string name, string expectedHash)
+    {
+        var bytes = ReadPrivate(Path.Combine(recovery, name), MaximumFactsBytes);
+        VerifyHash(bytes, expectedHash, "Facts recovery image hash mismatch.");
+        _ = JsonFileDeviceFactsSource.Parse(bytes, null);
+    }
+
+    private static void DiscardBundleStaging(string staging)
+    {
+        CheckPrivateDirectory(staging);
+        if (GetPathStatus(staging) is not { IsNonMountRoot: true } entry || entry.Owner != GetEffectiveUid())
+            throw new IOException("Facts bundle staging must be owned by the publisher.");
+        var files = System.IO.Directory.EnumerateFileSystemEntries(staging).Take(4).ToArray();
+        foreach (var file in files)
+        {
+            if (Path.GetFileName(file) is not (BeforeName or AfterName or IntentName))
+                throw new IOException("Unknown facts bundle staging entry.");
+            CheckScratchFile(file);
+        }
+        foreach (var file in files)
+            File.Delete(file);
+        System.IO.Directory.Delete(staging);
+    }
+
+    private static void CheckScratchFile(string path)
+    {
+        // Failed writes may be empty and a restrictive umask can remove owner access.
+        var status = GetPathStatus(path);
+        if (status is not { IsSingleRegular: true, IsNonMountRoot: true } entry || entry.Owner != GetEffectiveUid() ||
+            (entry.Permissions & ~PrivateFile) != 0)
+            throw new IOException("Facts staging entry is not a private regular file owned by the publisher.");
+    }
+
+    private static string PendingPath(string parent, string transaction) =>
+        Path.Combine(parent, ".facts-" + transaction + ".pending");
+
+    private static long PendingSize(string path)
+    {
+        var status = GetPathStatus(path);
+        if (status is null) return 0;
+        if (status is not { IsSingleRegular: true, Size: >= 0 and <= MaximumFactsBytes } entry)
+            throw new IOException("Invalid retained facts pending file.");
+        return entry.Size;
     }
 
     internal static long ValidateDraft(ReadOnlyMemory<byte> current, ReadOnlyMemory<byte> draft)
@@ -202,7 +402,12 @@ internal static class DeviceFactsPublisher
     internal static byte[] Read(string path)
     {
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        if (file.Length is 0 or > 1048576) throw new InvalidDataException("Unsupported facts file size.");
+        return Read(file);
+    }
+
+    private static byte[] Read(FileStream file)
+    {
+        if (file.Length is 0 or > MaximumFactsBytes) throw new InvalidDataException("Unsupported facts file size.");
         var bytes = new byte[(int)file.Length]; file.ReadExactly(bytes);
         if (file.ReadByte() != -1) throw new IOException("File changed during read.");
         return bytes;
@@ -222,21 +427,26 @@ internal static class DeviceFactsPublisher
             Guid.TryParseExact(value.AsSpan(3), "D", out _));
     private static byte[] ReadPrivate(string path, int maximumBytes)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
-        var info = new FileInfo(path);
-        if (!info.Exists || info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint) ||
-            info.Length is <= 0 || info.Length > maximumBytes || File.GetUnixFileMode(path) != PrivateFile)
-            throw new IOException("Owner-only regular facts recovery file required.");
+        var size = PrivateFileSize(path, maximumBytes);
         using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var bytes = new byte[(int)input.Length]; input.ReadExactly(bytes);
+        var bytes = new byte[(int)size]; input.ReadExactly(bytes);
         if (input.ReadByte() != -1) throw new IOException("Facts recovery file changed during read.");
         return bytes;
     }
+
+    private static long PrivateFileSize(string path, int maximumBytes)
+    {
+        if (GetPathStatus(path) is not { IsSingleRegular: true, Permissions: PrivateFile, Size: > 0 } entry ||
+            entry.Size > maximumBytes)
+            throw new IOException("Owner-only regular facts recovery file required.");
+        return entry.Size;
+    }
+
     private static T ReadPrivateJson<T>(string path)
     {
         try
         {
-            var bytes = ReadPrivate(path, 65_536);
+            var bytes = ReadPrivate(path, MaximumRecordBytes);
             using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
             RejectDuplicateProperties(document.RootElement);
             return JsonSerializer.Deserialize<T>(bytes, StrictJson)
@@ -259,12 +469,26 @@ internal static class DeviceFactsPublisher
         else if (element.ValueKind == JsonValueKind.Array)
             foreach (var item in element.EnumerateArray()) RejectDuplicateProperties(item);
     }
+    private static string CheckPublicationDirectory(string target)
+    {
+        var parent = Path.GetDirectoryName(target)!;
+        if (parent == "/" || Path.GetFileName(target) == HistoryLockName)
+            throw new ArgumentException("Dedicated facts directory required.");
+        CheckDirectory(parent);
+        return parent;
+    }
+
     private static void CheckDirectory(string path)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         var info = new DirectoryInfo(path);
         if (!info.Exists || info.LinkTarget is not null || (File.GetUnixFileMode(path) & UntrustedWrite) != 0)
             throw new IOException("Existing operator-controlled directory required; links and shared write access refused.");
+    }
+    private static void CheckPrivateDirectory(string path)
+    {
+        if (GetPathStatus(path) is not { IsDirectory: true, Permissions: PrivateDirectory })
+            throw new IOException("Owner-only regular facts recovery directory required.");
     }
     private static void CheckFile(string path)
     {
@@ -273,19 +497,19 @@ internal static class DeviceFactsPublisher
         if (!info.Exists || info.LinkTarget is not null || (File.GetUnixFileMode(path) & UntrustedWrite) != 0)
             throw new IOException("Existing operator-controlled facts file required; links and shared write access refused.");
     }
-    private static FileStream AcquireLock(string target)
+    private static FileStream AcquireLock(string lockPath)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
-        var lockPath = target + ".publish.lock";
-        if (new FileInfo(lockPath).LinkTarget is not null) throw new IOException("Linked publication lock refused.");
+        if (GetPathStatus(lockPath) is { IsSingleRegular: false })
+            throw new IOException("Linked or nonregular publication lock refused.");
         var guard = new FileStream(lockPath, new FileStreamOptions {
             Mode = FileMode.OpenOrCreate, Access = FileAccess.ReadWrite, Share = FileShare.ReadWrite,
             UnixCreateMode = PrivateFile });
         try
         {
-            if (File.GetUnixFileMode(lockPath) != PrivateFile)
+            if (File.GetUnixFileMode(guard.SafeFileHandle) != PrivateFile)
                 throw new IOException("Private publication lock required.");
-            if (Flock(guard.SafeFileHandle.DangerousGetHandle().ToInt32(), 2 | 4) != 0)
+            if (Flock(guard.SafeFileHandle, 2 | 4) != 0)
                 throw new IOException("Another facts publisher holds the lock; reload before retrying.");
             return guard;
         }
@@ -303,7 +527,7 @@ internal static class DeviceFactsPublisher
     }
     private static void SyncDirectory(string directory)
     {
-        var fd = Open(directory, 0x10000 | 0x80000);
+        var fd = Open(directory, 0x10000 | 0x20000 | 0x80000); // O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC
         if (fd < 0) throw new IOException("Cannot open publication directory for durable sync.");
         try { if (Fsync(fd) != 0) throw new IOException("Cannot durably sync publication directory."); }
         finally { _ = Close(fd); }
@@ -311,8 +535,46 @@ internal static class DeviceFactsPublisher
     [DllImport("libc", EntryPoint = "open", SetLastError = true)] private static extern int Open(string path, int flags);
     [DllImport("libc", EntryPoint = "fsync", SetLastError = true)] private static extern int Fsync(int fd);
     [DllImport("libc", EntryPoint = "close")] private static extern int Close(int fd);
-    [DllImport("libc", EntryPoint = "flock", SetLastError = true)] private static extern int Flock(int fd, int operation);
+    [DllImport("libc", EntryPoint = "flock", SetLastError = true)]
+    private static extern int Flock(Microsoft.Win32.SafeHandles.SafeFileHandle fd, int operation);
     [DllImport("libc", EntryPoint = "getuid")] private static extern uint GetUid();
+    [LibraryImport("libc", EntryPoint = "geteuid")] private static partial uint GetEffectiveUid();
+
+    private static LinuxFileStatus? GetPathStatus(string path)
+    {
+        const int currentWorkingDirectory = -100;
+        const int noFollow = 0x100;
+        const uint requiredStats = 0x20f; // Type, mode, link count, UID and size.
+        if (Statx(currentWorkingDirectory, path, noFollow, requiredStats, out var status) == 0)
+        {
+            if ((status.Mask & requiredStats) != requiredStats)
+                throw new IOException("Required facts recovery metadata is unavailable.");
+            return status;
+        }
+        if (Marshal.GetLastPInvokeError() == 2) return null; // ENOENT
+        throw new IOException("Cannot inspect facts recovery path.");
+    }
+
+    // Linux statx has a fixed layout across architectures.
+    [StructLayout(LayoutKind.Explicit, Size = 256)]
+    private struct LinuxFileStatus
+    {
+        [FieldOffset(0)] internal uint Mask;
+        [FieldOffset(8)] private ulong attributes;
+        [FieldOffset(16)] private uint linkCount;
+        [FieldOffset(20)] internal uint Owner;
+        [FieldOffset(28)] private ushort mode;
+        [FieldOffset(40)] internal long Size;
+        [FieldOffset(56)] private ulong attributesMask;
+
+        internal bool IsDirectory => (mode & 0xF000) == 0x4000;
+        internal bool IsSingleRegular => (mode & 0xF000) == 0x8000 && linkCount == 1;
+        internal bool IsNonMountRoot => (attributesMask & 0x2000) != 0 && (attributes & 0x2000) == 0;
+        internal UnixFileMode Permissions => (UnixFileMode)(mode & 0xFFF);
+    }
+
+    [LibraryImport("libc", EntryPoint = "statx", SetLastError = true, StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int Statx(int directory, string path, int flags, uint mask, out LinuxFileStatus status);
 
     private sealed record RecoveryIntent(int Version, FactsPublication Publication,
         string TargetName, uint OperatorUid, DateTimeOffset PreparedAt, string? OperatorIdentity = null,

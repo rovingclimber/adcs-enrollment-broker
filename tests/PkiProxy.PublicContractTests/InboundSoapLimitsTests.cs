@@ -69,9 +69,7 @@ internal static class InboundSoapLimitsTests
         })
             Check(!(await Read(Bytes(hostile), limits, null)).IsValid, "DTD/entity input rejected");
 
-        var malformedUtf8 = basic.ToArray();
-        malformedUtf8[Array.IndexOf(malformedUtf8, (byte)'o')] = 0xff;
-        Check((await Read(malformedUtf8, limits, null)).ErrorCode == "MalformedEncoding", "malformed UTF-8 rejected");
+        await CheckUtf8EncodingAsync(Check, limits);
         Check(!(await Read(basic, limits, null, "text/xml")).IsValid, "content-type confusion rejected");
         Check(!(await Read(basic, limits, null, "application/soap+xml; charset=utf-16")).IsValid,
             "unadmitted charset rejected");
@@ -113,6 +111,57 @@ internal static class InboundSoapLimitsTests
         Console.WriteLine($"Central inbound SOAP/XML limit checks passed: {checks}.");
     }
 
+    private static async Task CheckUtf8EncodingAsync(Action<bool, string> check, InboundRequestLimits limits)
+    {
+        const string value = "café 中文 🌍";
+        var envelope = Envelope($"<o>{value}</o>");
+        var bom = Encoding.UTF8.GetPreamble();
+        foreach (var declaration in new[] { "", "<?xml version='1.0'?>", Declaration("UtF-8"), Declaration("unicode-1-1-utf-8") })
+        {
+            var bytes = Bytes(declaration + envelope);
+            foreach (var body in new[] { bytes, bom.Concat(bytes).ToArray() })
+            {
+                var result = await Read(body, limits, body.Length);
+                check(result.IsValid && result.Operation?.Value == value,
+                    $"UTF-8 text preserved with declaration '{declaration}' and BOM {body.Length > bytes.Length}");
+            }
+        }
+
+        foreach (var encoding in new[] { "ISO-8859-1", "UTF-16", "US-ASCII", "utf8", "X-unknown" })
+        {
+            var body = Bytes(Declaration(encoding) + envelope);
+            check((await Read(body, limits, null)).ErrorCode == "MalformedEncoding",
+                $"UTF-8 body declaring {encoding} rejected");
+        }
+
+        foreach (var encoding in new[] { Encoding.Unicode, Encoding.BigEndianUnicode })
+        {
+            // The NUL bytes in this ASCII envelope are valid UTF-8 bytes, but cannot form XML.
+            var body = encoding.GetBytes(Envelope("<o>ok</o>"));
+            check(!(await Read(body, limits, null)).IsValid,
+                $"BOM-less {encoding.WebName} body rejected with UTF-8 Content-Type");
+            var withBom = encoding.GetPreamble().Concat(body).ToArray();
+            check((await Read(withBom, limits, null)).ErrorCode == "MalformedEncoding",
+                $"{encoding.WebName} BOM rejected with UTF-8 Content-Type");
+        }
+
+        var utf8 = Bytes(envelope);
+        check((await Read(utf8, limits, null, "application/soap+xml; charset=utf8")).IsValid,
+            "UTF-8 HTTP charset alias accepted");
+        var doubleBom = bom.Concat(bom).Concat(utf8).ToArray();
+        check((await Read(doubleBom, limits, null)).ErrorCode == "MalformedEncoding", "double UTF-8 BOM rejected");
+        foreach (var length in new[] { 1, 2 })
+        {
+            var truncatedBom = bom[..length].Concat(utf8).ToArray();
+            check((await Read(truncatedBom, limits, null)).ErrorCode == "MalformedEncoding", "truncated UTF-8 BOM rejected");
+        }
+
+        var malformedUtf8 = Bytes(Envelope("<o>ok</o>"));
+        malformedUtf8[Array.IndexOf(malformedUtf8, (byte)'o')] = 0xff;
+        check((await Read(malformedUtf8, limits, null)).ErrorCode == "MalformedEncoding", "malformed UTF-8 rejected");
+    }
+
+    private static string Declaration(string encoding) => $"<?xml version='1.0' encoding='{encoding}'?>";
     private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
     private static string Envelope(string operation) =>
         $"<s:Envelope xmlns:s=\"{Soap}\"><s:Body>{operation}</s:Body></s:Envelope>";

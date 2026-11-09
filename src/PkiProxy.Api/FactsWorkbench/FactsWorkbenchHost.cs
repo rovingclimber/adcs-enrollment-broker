@@ -19,7 +19,7 @@ internal static class FactsWorkbenchHost
         if ((args.Length != 2 && !localPublish && !hostedPublish) || !Path.IsPathFullyQualified(args[1]) ||
             (publishEnabled && !OperatingSystem.IsLinux()) || (hostedPublish && !Path.IsPathFullyQualified(args[4])))
         {
-            Console.Error.WriteLine("Usage: --facts-workbench ABSOLUTE_SOURCE_JSON [--enable-publish [--hosted-config ABSOLUTE_JSON] (Linux only)]");
+            await Console.Error.WriteLineAsync("Usage: --facts-workbench ABSOLUTE_SOURCE_JSON [--enable-publish [--hosted-config ABSOLUTE_JSON] (Linux only)]");
             return 64;
         }
         var path = args[1];
@@ -64,6 +64,8 @@ internal static class FactsWorkbenchHost
         });
         app.MapGet("/", () => Results.Content(Asset("index.html").Replace("__WORKBENCH_TOKEN__", token, StringComparison.Ordinal), "text/html", Encoding.UTF8));
         app.MapGet("/workbench.css", () => Results.Content(Asset("workbench.css"), "text/css", Encoding.UTF8));
+        app.MapGet("/ui-system.css", () => Results.Content(Asset("ui-system.css"), "text/css", Encoding.UTF8));
+        app.MapGet("/ui-theme.js", () => Results.Content(Asset("ui-theme.js"), "text/javascript", Encoding.UTF8));
         app.MapGet("/publication.css", () => Results.Content(Asset("publication.css"), "text/css", Encoding.UTF8));
         app.MapGet("/workbench.js", () => Results.Content(Asset("workbench.js"), "text/javascript", Encoding.UTF8));
         app.MapGet("/api/snapshot", () =>
@@ -85,7 +87,7 @@ internal static class FactsWorkbenchHost
             while ((count = await request.Body.ReadAsync(chunk, cancellationToken)) > 0)
             {
                 if (buffer.Length + count > 1048576) return Results.StatusCode(413);
-                buffer.Write(chunk, 0, count);
+                await buffer.WriteAsync(chunk.AsMemory(0, count), cancellationToken);
             }
             if (!await publicationGate.WaitAsync(0, cancellationToken))
                 return Results.Conflict(new { error = "Another publication is in progress. Reload before retrying." });
@@ -119,7 +121,7 @@ internal static class FactsWorkbenchHost
             while ((count = await request.Body.ReadAsync(chunk, cancellationToken)) > 0)
             {
                 if (buffer.Length + count > 1048576) return Results.StatusCode(413);
-                buffer.Write(chunk, 0, count);
+                await buffer.WriteAsync(chunk.AsMemory(0, count), cancellationToken);
             }
             var output = DeviceFactsEditor.PrepareDocument(ReadSource(path), request.Headers.IfMatch.ToString(), buffer.ToArray());
             return Results.File(output, "application/json", "device-facts.draft.json");
@@ -127,8 +129,9 @@ internal static class FactsWorkbenchHost
         await app.StartAsync();
         var listener = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
         origin ??= listener;
-        Console.WriteLine("Device facts workbench (" + (hosted is not null ? "authenticated hosted publication" :
-            publishEnabled ? "publication enabled" : "drafts only") + "): " + origin);
+        var mode = publishEnabled ? "publication enabled" : "drafts only";
+        if (hosted is not null) mode = "authenticated hosted publication";
+        Console.WriteLine("Device facts workbench (" + mode + "): " + origin);
         await app.WaitForShutdownAsync();
         await app.DisposeAsync();
         return 0;

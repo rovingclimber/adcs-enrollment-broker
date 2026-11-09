@@ -10,6 +10,8 @@ namespace PkiProxy.Domain;
 // uncertain write over automatically resurrecting a consumed approval.
 internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
 {
+    private const string PendingMarker = "pending";
+    private const string ConsumedMarker = "consumed";
     private readonly string directory;
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -36,7 +38,7 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
             throw new ArgumentOutOfRangeException(nameof(lifetime));
         var record = new Entry(1, Convert.ToHexString(binding.CsrSha256),
             Convert.ToHexString(binding.SubjectPublicKeyInfoSha256), now, now.Add(lifetime), null, null);
-        return Create(Name(binding, "pending"), record) ? BootstrapStoreResult.Recorded : BootstrapStoreResult.AlreadyExists;
+        return Create(Name(binding, PendingMarker), record) ? BootstrapStoreResult.Recorded : BootstrapStoreResult.AlreadyExists;
     }
 
     public BootstrapStoreResult Attest(CsrBinding binding, string authoritativeAssetId, DateTimeOffset now)
@@ -45,7 +47,7 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
         ValidateAsset(authoritativeAssetId);
         var (result, pending) = ReadPending(binding, now);
         if (result != BootstrapStoreResult.Recorded) return result;
-        if (Read(Name(binding, "consumed")) is not null) return BootstrapStoreResult.InvalidState;
+        if (Read(Name(binding, ConsumedMarker)) is not null) return BootstrapStoreResult.InvalidState;
         // Caller must already authenticate/authorize the technician and resolve
         // this ID against the authoritative catalogue. This is not a portal API.
         var approved = pending! with { AssetId = authoritativeAssetId, TransitionAt = now };
@@ -58,7 +60,7 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
         binding = binding.Snapshot();
         var (result, pending) = ReadPending(binding, now);
         if (result != BootstrapStoreResult.Recorded) return new(result, null);
-        if (Read(Name(binding, "consumed")) is not null) return new(BootstrapStoreResult.InvalidState, null);
+        if (Read(Name(binding, ConsumedMarker)) is not null) return new(BootstrapStoreResult.InvalidState, null);
         var approved = Read(Name(binding, "attested"));
         if (approved is null) return new(BootstrapStoreResult.InvalidState, null);
         if (!SameRequest(pending!, approved) || approved.TransitionAt is null ||
@@ -74,9 +76,9 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
         binding = binding.Snapshot();
         var approved = GetAttestedAsset(binding, now);
         if (approved.Result != BootstrapStoreResult.Attested) return new(approved.Result, null);
-        var pending = Read(Name(binding, "pending")) ?? throw new InvalidDataException("Bootstrap request disappeared.");
+        var pending = Read(Name(binding, PendingMarker)) ?? throw new InvalidDataException("Bootstrap request disappeared.");
         var consumed = pending with { AssetId = approved.AuthoritativeAssetId, TransitionAt = now };
-        return Create(Name(binding, "consumed"), consumed)
+        return Create(Name(binding, ConsumedMarker), consumed)
             ? new(BootstrapStoreResult.Consumed, approved.AuthoritativeAssetId)
             : new(BootstrapStoreResult.InvalidState, null);
     }
@@ -89,13 +91,13 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
     {
         binding = binding.Snapshot();
         ValidateBinding(binding);
-        var pendingPath = Name(binding, "pending");
+        var pendingPath = Name(binding, PendingMarker);
         var pending = Read(pendingPath);
         if (pending is null) return;
         if (!SameRequest(pending, pending) || pending.AssetId is not null || pending.TransitionAt is not null ||
             (requireExpiry && now < pending.ExpiresAt))
             throw new InvalidDataException("Bootstrap attestation is not collectable.");
-        if (Read(Name(binding, "attested")) is not null || Read(Name(binding, "consumed")) is not null)
+        if (Read(Name(binding, "attested")) is not null || Read(Name(binding, ConsumedMarker)) is not null)
             throw new InvalidDataException("Trusted bootstrap attestation cannot be collected.");
         CheckFile(pendingPath);
         File.Delete(pendingPath);
@@ -105,7 +107,7 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
     private (BootstrapStoreResult Result, Entry? Entry) ReadPending(CsrBinding binding, DateTimeOffset now)
     {
         ValidateBinding(binding);
-        var pending = Read(Name(binding, "pending"));
+        var pending = Read(Name(binding, PendingMarker));
         if (pending is null) return (BootstrapStoreResult.NotFound, null);
         if (!new CsrBinding(Convert.FromHexString(pending.CsrSha256), Convert.FromHexString(pending.SpkiSha256)).Matches(binding))
             return (BootstrapStoreResult.BindingMismatch, null);
@@ -153,10 +155,11 @@ internal sealed class FileBootstrapAttestationStore : IBootstrapAttestationStore
             throw new IOException("Symbolic-link bootstrap marker rejected.");
         if (!info.Exists)
         {
-            // GetAttributes distinguishes an absent path from inaccessible state.
+            // GetAttributes distinguishes absence from a failed metadata read.
+            // A peer may have published the marker since the first lookup.
+            // If it is now present, validate it through the normal read path.
             try { _ = File.GetAttributes(path); }
             catch (FileNotFoundException) { return null; }
-            throw new IOException("Invalid bootstrap marker.");
         }
         return ReadJson<Entry>(path);
     }

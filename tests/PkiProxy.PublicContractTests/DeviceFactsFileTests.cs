@@ -2,6 +2,7 @@ using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json.Nodes;
 using PkiProxy.Domain;
 using PkiProxy.Protocol.Cmc;
 
@@ -13,6 +14,7 @@ internal static class DeviceFactsFileTests
         void Check(bool condition, string label)
         { if (!condition) throw new InvalidOperationException("Facts file: " + label); checks++; }
         const string host = "CLIENT-PHYSICAL-001.example.test";
+        var directoryId = Guid.NewGuid();
         var example = await File.ReadAllTextAsync("lab/device-facts/devices.example.json");
         var facts = JsonFileDeviceFactsSource.Parse(Encoding.UTF8.GetBytes(example), host.ToLowerInvariant());
         Check(facts is { UseCase: "lab-validation", SourceVersion: 1, AssetId: "asset-physical-001" },
@@ -37,7 +39,10 @@ internal static class DeviceFactsFileTests
             example.Replace("\"location\": \"office\"", "\"location\": \"office\", \"san\": \"urn:evil:claim\"", StringComparison.Ordinal),
             example.Replace(host, "*.example.test", StringComparison.Ordinal),
             example.Replace("\"deviceClass\": \"workstation\"", "\"deviceClass\": null", StringComparison.Ordinal),
-            example.Replace("\"location\": \"office\"", "\"location\": \"a\\nline\"", StringComparison.Ordinal)
+            example.Replace("\"location\": \"office\"", "\"location\": \"a\\nline\"", StringComparison.Ordinal),
+            WithBindings(example, "malformed"),
+            WithBindings(example, Guid.Empty.ToString("D")),
+            WithBindings(example, directoryId.ToString("D"), directoryId.ToString("D"))
         };
         foreach (var invalid in invalidDocuments)
         {
@@ -54,6 +59,8 @@ internal static class DeviceFactsFileTests
             Check(catalog.SourceRevision == 1, "catalog snapshots the validated source revision");
             Check(catalog.Contains("asset-physical-001") && catalog.Contains("asset-virtual-001"),
                 "catalog contains every exact authoritative asset ID");
+            Check(catalog.FindDnsHostName("asset-physical-001") == host &&
+                catalog.FindDnsHostName("LAB-PHYSICAL-001") is null, "catalog freezes exact asset-to-hostname mapping");
             Check(!catalog.Contains("LAB-PHYSICAL-001") && !catalog.Contains(" asset-physical-001") &&
                 !catalog.Contains("asset-physical-001 ") && !catalog.Contains("missing-asset"),
                 "catalog membership is ordinal exact without normalization");
@@ -69,10 +76,39 @@ internal static class DeviceFactsFileTests
             var authorizer = new NativeDomainEnrollmentAuthorizer(source,
                 new("urn:example:pki-broker:lab:fact:v1:profile:broker-pilot", "urn:example:pki-broker:lab:fact:v1:"),
                 policy, new("1.3.6.1.4.1.55555.670.2", 2, 0, signingEku));
-            var computer = new AuthenticatedDirectoryComputer("ad-fixture-object",
+            var computer = new AuthenticatedDirectoryComputer(directoryId.ToString("D"),
                 "CN=CLIENT-PHYSICAL-001,CN=Computers,DC=test,DC=corp", host);
             using var deviceKey = RSA.Create(2048);
             var cmc = IncomingCmcRequestTests.CreateDomainFixture(deviceKey);
+            var unbound = await authorizer.AuthorizeAsync(computer, cmc, default);
+            Check(unbound.Result == NativeDomainAuthorizationResult.UnknownDevice && unbound.Enrollment is null,
+                "legacy hostname-only row cannot authorize initial enrollment");
+            var boundDocument = WithBindings(example, directoryId.ToString("D"));
+            await File.WriteAllTextAsync(path, boundDocument);
+            var reused = await authorizer.AuthorizeAsync(computer with { ObjectId = Guid.NewGuid().ToString("D") }, cmc, default);
+            Check(reused.Result == NativeDomainAuthorizationResult.UnknownDevice && reused.Enrollment is null,
+                "a new authenticated AD object reusing the same DNS name cannot inherit the asset");
+
+            var bindingEdits = new[]
+            {
+                (example, boundDocument),
+                (boundDocument, example),
+                (boundDocument, WithBindings(example, Guid.NewGuid().ToString("D"))),
+                (boundDocument, boundDocument.Replace(host, "moved.example.test", StringComparison.Ordinal)),
+                (boundDocument, boundDocument.Replace("asset-physical-001", "different-asset", StringComparison.Ordinal))
+            };
+            foreach (var (before, candidate) in bindingEdits)
+            {
+                var input = Encoding.UTF8.GetBytes(before);
+                var revised = JsonNode.Parse(candidate)!;
+                revised["revision"] = 2;
+                try
+                {
+                    _ = DeviceFactsPublisher.ValidateDraft(input, Encoding.UTF8.GetBytes(revised.ToJsonString()));
+                    throw new InvalidOperationException("Routine publisher modified a directory binding");
+                }
+                catch (InvalidDataException) { checks++; }
+            }
             using var signerKey = RSA.Create(2048);
             var signerRequest = new CertificateRequest("CN=Ephemeral facts test signer", signerKey,
                 HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -85,25 +121,21 @@ internal static class DeviceFactsFileTests
             Check(Uris(firstOutput).Contains("urn:example:pki-broker:lab:fact:v1:use-case:lab-validation"),
                 "actual downstream SAN reads use-case from disk");
 
-            var replacement = example.Replace("\"revision\": 1", "\"revision\": 2", StringComparison.Ordinal)
-                .Replace("\"useCase\": \"lab-validation\"", "\"useCase\": \"engineering\"", StringComparison.Ordinal)
-                .Replace("\"assetId\": \"asset-physical-001\"", "\"assetId\": \"lab-physical-002\"", StringComparison.Ordinal);
+            var revisedFacts = JsonNode.Parse(boundDocument)!;
+            revisedFacts["revision"] = 2;
+            revisedFacts["devices"]![0]!["useCase"] = "engineering";
+            var replacement = revisedFacts.ToJsonString();
+            Check(DeviceFactsPublisher.ValidateDraft(Encoding.UTF8.GetBytes(boundDocument), Encoding.UTF8.GetBytes(replacement)) == 2,
+                "routine publisher accepts mutable facts for the same directory binding");
             var staged = Path.Combine(temp, "devices.next.json");
             await File.WriteAllTextAsync(staged, replacement);
             File.Move(staged, path, overwrite: true);
-            Check(catalog.SourceRevision == 1 && catalog.Contains("asset-physical-001") &&
-                !catalog.Contains("lab-physical-002"),
-                "existing catalog is immutable after atomic facts replacement");
-            var reloadedCatalog = await JsonFileImmutableAssetCatalog.LoadAsync(path);
-            Check(reloadedCatalog.SourceRevision == 2 && reloadedCatalog.Contains("lab-physical-002") &&
-                !reloadedCatalog.Contains("asset-physical-001"),
-                "explicit catalog reload sees the validated replacement");
             var second = (await authorizer.AuthorizeAsync(computer, cmc, default)).Enrollment!;
             var secondOutput = second.Build(signer, now);
             Check(first.FactsSourceVersion == 1 && second.FactsSourceVersion == 2,
                 "file revision retained in authorization");
-            Check(first.AssetId == "asset-physical-001" && second.AssetId == "lab-physical-002",
-                "facts source reopens and preserves exact replacement asset ID");
+            Check(first.AssetId == "asset-physical-001" && second.AssetId == first.AssetId,
+                "mutable facts refresh keeps the bound asset identity");
             Check(Uris(secondOutput).Contains("urn:example:pki-broker:lab:fact:v1:use-case:engineering") &&
                 !Uris(secondOutput).Contains("urn:example:pki-broker:lab:fact:v1:use-case:lab-validation"),
                 "edit changes next enrollment SAN without restarting source or authorizer");
@@ -112,6 +144,15 @@ internal static class DeviceFactsFileTests
             Check(firstOutput.SubjectNameDer.AsSpan().SequenceEqual(secondOutput.SubjectNameDer) &&
                 firstOutput.OriginalRequestBinding.Matches(secondOutput.OriginalRequestBinding),
                 "changing use-case never replaces AD subject or device key");
+
+            revisedFacts["devices"]![0]!["hostname"] = "moved.example.test";
+            await File.WriteAllTextAsync(staged, revisedFacts.ToJsonString());
+            File.Move(staged, path, overwrite: true);
+            Check(catalog.SourceRevision == 1 && catalog.FindDnsHostName("asset-physical-001") == host,
+                "existing catalog keeps the startup identity after atomic facts replacement");
+            var reloadedCatalog = await JsonFileImmutableAssetCatalog.LoadAsync(path);
+            Check(reloadedCatalog.SourceRevision == 2 && reloadedCatalog.FindDnsHostName("asset-physical-001") == "moved.example.test",
+                "explicit catalog reload sees the validated replacement");
 
             var invalidCatalogPath = Path.Combine(temp, "invalid-catalog.json");
             foreach (var invalid in invalidDocuments)
@@ -141,6 +182,15 @@ internal static class DeviceFactsFileTests
         }
         finally { System.IO.Directory.Delete(temp, recursive: true); } // Test-owned unique directory only.
         Console.WriteLine($"Editable facts file / changed-use-case SAN checks passed: {checks}.");
+    }
+
+    private static string WithBindings(string input, string first, string? second = null)
+    {
+        var document = JsonNode.Parse(input)!;
+        var devices = document["devices"]!.AsArray();
+        devices[0]!["directoryObjectId"] = first;
+        if (second is not null) devices[1]!["directoryObjectId"] = second;
+        return document.ToJsonString();
     }
 
     private static HashSet<string> Uris(CmcEnrollmentRequest request)

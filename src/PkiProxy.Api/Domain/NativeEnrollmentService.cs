@@ -120,12 +120,22 @@ internal sealed class NativeEnrollmentService : IDisposable
             var incoming = new NativeCmcPolicy(policy.TemplateOid, major, minor, X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment);
             var downstream = new CmcTemplate(policy.TemplateOid, major, minor, signerOid,
                 rotation.MinimumRemainingValidity, claims.BrokerProfileUrn);
+            NativeDomainRenewalAuthorizer? renewal = null;
+            if (renewalEnabled)
+            {
+                var renewalFacts = facts is LiveHttpDeviceFactsSource liveFacts ? liveFacts.ForRenewal() : facts;
+                renewal = new(renewalFacts, claims, incoming, root, crlPath, journal, downstream);
+            }
             return new(root, signer, signingKey, new(facts, claims, incoming, downstream),
                 new(endpoint, root, signer, crlPath, journal, signingKey: signingKey),
-                token => facts is JsonFileDeviceFactsSource json
-                    ? LocalIssuanceReadiness.CheckAsync(root, signer, signerOid, rotation, crlPath, json, token, signingKey)
-                    : Task.FromResult(false), claims, downstream,
-                renewalEnabled ? new(facts, claims, incoming, root, crlPath, journal, downstream) : null);
+                token => facts switch
+                {
+                    JsonFileDeviceFactsSource json => LocalIssuanceReadiness.CheckAsync(root, signer, signerOid,
+                        rotation, crlPath, json, token, signingKey),
+                    LiveHttpDeviceFactsSource live => LocalIssuanceReadiness.CheckAsync(root, signer, signerOid,
+                        rotation, crlPath, live.Cache, token, signingKey),
+                    _ => Task.FromResult(false)
+                }, claims, downstream, renewal);
         }
         catch { signingKey?.Dispose(); signer?.Dispose(); root.Dispose(); throw; }
     }

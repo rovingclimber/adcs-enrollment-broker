@@ -31,6 +31,8 @@ internal sealed record OperationalFactsWriteOutcome(OperationalFactsWriteResult 
 
 internal sealed class OperationalFactsManagement : IDisposable
 {
+    private const string HostnameField = "hostname";
+    private const string LocationField = "location";
     private const UnixFileMode PrivateFile = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private const UnixFileMode PrivateDirectory = PrivateFile | UnixFileMode.UserExecute;
     private static readonly JsonSerializerOptions StrictJson = new()
@@ -63,18 +65,18 @@ internal sealed class OperationalFactsManagement : IDisposable
         var devices = initial["devices"]!.AsArray();
         identities = new(StringComparer.Ordinal);
         allowedDeviceClasses = Catalogue(configuration.AllowedDeviceClasses, "device class");
-        allowedLocations = Catalogue(configuration.AllowedLocations, "location");
+        allowedLocations = Catalogue(configuration.AllowedLocations, LocationField);
         allowedManagementDomains = Catalogue(configuration.AllowedManagementDomains, "management domain");
         foreach (var node in devices)
         {
             var device = node!.AsObject();
             var assetId = Text(device, "assetId");
-            var hostname = Text(device, "hostname");
+            var hostname = Text(device, HostnameField);
             if (!TechnicianRoutePolicy.IsCanonicalAssetId(assetId) ||
                 !identities.TryAdd(assetId, new(assetId, hostname)))
                 throw new InvalidDataException("Facts management requires unique route-safe immutable asset identities.");
             if (!allowedDeviceClasses.Contains(Text(device, "deviceClass")) ||
-                !allowedLocations.Contains(Text(device, "location")) ||
+                !allowedLocations.Contains(Text(device, LocationField)) ||
                 !allowedManagementDomains.Contains(Text(device, "managementDomain")))
                 throw new InvalidDataException("Existing device facts are outside the configured fact catalogues.");
         }
@@ -183,20 +185,20 @@ internal sealed class OperationalFactsManagement : IDisposable
                 return new(OperationalFactsWriteResult.Unchanged,
                     new(current.Revision, current.Hash, existing, false));
 
-            var document = current.Document;
+            var document = current.SnapshotDocument;
             var devices = document["devices"]!.AsArray();
             var target = devices.Select(node => node!.AsObject()).SingleOrDefault(node =>
                 Text(node, "assetId") == assetId);
             if (target is null)
             {
-                target = new JsonObject { ["hostname"] = identity.Hostname, ["assetId"] = identity.AssetId };
+                target = new JsonObject { [HostnameField] = identity.Hostname, ["assetId"] = identity.AssetId };
                 devices.Add(target);
             }
-            target["hostname"] = identity.Hostname;
+            target[HostnameField] = identity.Hostname;
             target["assetId"] = identity.AssetId;
             target["deviceClass"] = update.DeviceClass;
             target["useCase"] = update.UseCase;
-            target["location"] = update.Location;
+            target[LocationField] = update.Location;
             target["managementDomain"] = update.ManagementDomain;
             document["revision"] = current.Revision;
             var proposal = JsonSerializer.SerializeToUtf8Bytes(document, OutputJson);
@@ -242,7 +244,7 @@ internal sealed class OperationalFactsManagement : IDisposable
             var assetId = Text(item, "assetId");
             var parsed = Asset(item);
             if (!identities.TryGetValue(assetId, out var immutable) ||
-                !string.Equals(Text(item, "hostname"), immutable.Hostname, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(Text(item, HostnameField), immutable.Hostname, StringComparison.OrdinalIgnoreCase) ||
                 !Allowed(new(parsed.DeviceClass, parsed.UseCase, parsed.Location, parsed.ManagementDomain)) ||
                 !records.TryAdd(assetId, parsed))
                 throw new InvalidDataException("Immutable facts asset identity changed outside the manager.");
@@ -267,8 +269,8 @@ internal sealed class OperationalFactsManagement : IDisposable
     private static bool Bounded(string? value) => value is { Length: > 0 and <= 256 } &&
         !value.Any(char.IsControl);
     private static OperationalFactsAsset Asset(JsonObject value) => new(Text(value, "assetId"),
-        Text(value, "hostname"), Text(value, "deviceClass"), Text(value, "useCase"),
-        Text(value, "location"), Text(value, "managementDomain"));
+        Text(value, HostnameField), Text(value, "deviceClass"), Text(value, "useCase"),
+        Text(value, LocationField), Text(value, "managementDomain"));
     private static string Text(JsonObject value, string name) => value[name]!.GetValue<string>();
     private static JsonObject Document(ReadOnlyMemory<byte> bytes)
     {
@@ -282,6 +284,6 @@ internal sealed class OperationalFactsManagement : IDisposable
     internal sealed record Configuration(int Version, string DeviceFactsFile, int MaximumAssets,
         string[] AllowedDeviceClasses, string[] AllowedLocations, string[] AllowedManagementDomains);
     private sealed record ImmutableIdentity(string AssetId, string Hostname);
-    private sealed record Current(long Revision, string Hash, byte[] Bytes, JsonObject Document,
+    private sealed record Current(long Revision, string Hash, byte[] Bytes, JsonObject SnapshotDocument,
         Dictionary<string, OperationalFactsAsset> Devices);
 }

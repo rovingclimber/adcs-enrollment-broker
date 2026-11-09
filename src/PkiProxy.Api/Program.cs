@@ -20,6 +20,16 @@ if (args.Length > 0 && args[0] == "--facts-workbench")
     Environment.ExitCode = await PkiProxy.FactsWorkbench.FactsWorkbenchHost.RunAsync(args);
     return;
 }
+if (args.Length > 0 && args[0] == "--demo-console")
+{
+    Environment.ExitCode = await PkiProxy.DemoConsole.DemoConsoleHost.RunAsync(args);
+    return;
+}
+if (args.Length > 0 && args[0] == "--facts-connector-sync")
+{
+    Environment.ExitCode = await HttpFactsConnectorCommand.RunAsync(args);
+    return;
+}
 if (args.Length > 0 && args[0].StartsWith("--facts-", StringComparison.Ordinal))
 {
     Environment.ExitCode = DeviceFactsCommand.Run(args);
@@ -45,11 +55,26 @@ if (builder.Configuration["Broker:XcepPolicyFile"] is { Length: > 0 } policyPath
     builder.Services.AddSingleton(enrollmentPolicy);
 }
 IDomainDeviceFactsSource? deviceFacts = null;
+LiveHttpDeviceFactsSource? liveDeviceFacts = null;
 if (builder.Configuration["Broker:DeviceFactsFile"] is { Length: > 0 } factsPath)
 {
-    deviceFacts = new JsonFileDeviceFactsSource(factsPath);
+    var cache = new JsonFileDeviceFactsSource(factsPath);
+    if (builder.Configuration["Broker:FactsConnectorProfileFile"] is { Length: > 0 } connectorProfilePath)
+    {
+        var connector = HttpFactsConnector.Load(connectorProfilePath);
+        if (connector.Profile.Mode != FactsConnectorMode.Live)
+        {
+            connector.Dispose();
+            throw new InvalidOperationException("Broker runtime requires a live-mode facts connector profile.");
+        }
+        liveDeviceFacts = new(connector, cache, Path.GetFullPath(factsPath), allowCacheFallback: false);
+        deviceFacts = liveDeviceFacts;
+    }
+    else deviceFacts = cache;
     builder.Services.AddSingleton(deviceFacts);
 }
+else if (builder.Configuration["Broker:FactsConnectorProfileFile"] is { Length: > 0 })
+    throw new InvalidOperationException("A live facts connector requires the local facts cache.");
 using var nativeEnrollment = NativeEnrollmentService.Load(builder.Configuration, enrollmentPolicy, deviceFacts,
     directoryAuthorization is not null && kerberosListener is not null);
 if (nativeEnrollment is not null) builder.Services.AddSingleton(nativeEnrollment);
@@ -64,7 +89,7 @@ if (!string.IsNullOrWhiteSpace(bootstrapConfigurationFile))
     if (nativeEnrollment is null)
         throw new InvalidOperationException("Bootstrap issuance requires the guarded signer and CES issuance composition.");
     bootstrap = await BootstrapDeployment.LoadAsync(bootstrapConfigurationFile, enrollmentPolicy,
-        nativeEnrollment, kerberosListener!);
+        nativeEnrollment, kerberosListener!, liveDeviceFacts);
     builder.Services.AddSingleton(bootstrap);
     builder.Services.AddSingleton(bootstrap.Authentication);
     builder.Services.AddAuthentication()
@@ -139,7 +164,8 @@ if (factsManagement is not null)
     app.MapPut("/facts/technician/assets/{assetId}", OperationalFactsRequestHandler.PutAsync);
 }
 
-app.Run();
+await app.RunAsync();
+liveDeviceFacts?.Dispose();
 
 static async Task<IResult> HandleProtocolRequest(
     HttpContext context,

@@ -287,7 +287,8 @@ internal static class CmcEnrollmentRequestBuilder
             nid.Equals("urn", StringComparison.OrdinalIgnoreCase)) return false;
         foreach (var c in nid)
             if (!char.IsAsciiLetterOrDigit(c) && c != '-') return false;
-        for (var i = separator + 1; i < value.Length; i++)
+        var i = separator + 1;
+        while (i < value.Length)
         {
             var c = value[i];
             if (c == '%')
@@ -296,6 +297,7 @@ internal static class CmcEnrollmentRequestBuilder
                 i += 2;
             }
             else if (!char.IsAsciiLetterOrDigit(c) && !"-._~!$&'()*+,;=:@".Contains(c) && !(c == '/' && i > separator + 1)) return false;
+            i++;
         }
         return true;
     }
@@ -305,15 +307,15 @@ internal static class CmcEnrollmentRequestBuilder
         var writer = new AsnWriter(AsnEncodingRules.DER);
         using (writer.PushSequence())
         {
-            using (writer.PushSequence()) { } // controlSequence: none; no client controls forwarded.
+            writer.PushSequence().Dispose(); // controlSequence: empty.
             using (writer.PushSequence())
             using (writer.PushSequence(ContextZero)) // IMPLICIT [0] TaggedCertificationRequest
             {
                 writer.WriteInteger(1); // unique request bodyPartID
                 writer.WriteEncodedValue(request);
             }
-            using (writer.PushSequence()) { } // cmsSequence
-            using (writer.PushSequence()) { } // otherMsgSequence
+            writer.PushSequence().Dispose(); // cmsSequence: empty.
+            writer.PushSequence().Dispose(); // otherMsgSequence: empty.
         }
         return writer.Encode();
     }

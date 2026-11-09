@@ -19,7 +19,7 @@ internal sealed class KerberosHttpTransport : IDisposable
     internal string NetBiosDomain => netBios;
     internal int ActiveExchanges => maximumExchanges - slots.CurrentCount;
     private readonly int maximumExchanges;
-    private readonly HashSet<IPAddress> allowedClients;
+    private readonly Dictionary<IPAddress, SemaphoreSlim> peerSlots;
     private readonly int? authorityPort;
 
     public KerberosHttpTransport(string servicePrincipal, string realm, string netBios,
@@ -38,11 +38,15 @@ internal sealed class KerberosHttpTransport : IDisposable
         this.maximumExchanges = maximumExchanges;
         if (authorityPort is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(authorityPort));
         this.authorityPort = authorityPort;
-        this.allowedClients = new(allowedClients ?? [IPAddress.Loopback, IPAddress.IPv6Loopback]);
-        if (this.allowedClients.Count is < 1 or > 8 || this.allowedClients.Contains(IPAddress.Any) || this.allowedClients.Contains(IPAddress.IPv6Any))
+        var clients = new HashSet<IPAddress>(allowedClients ?? [IPAddress.Loopback, IPAddress.IPv6Loopback]);
+        if (clients.Count is < 1 or > 8 || clients.Contains(IPAddress.Any) || clients.Contains(IPAddress.IPv6Any))
             throw new ArgumentException("One to eight exact client addresses required.", nameof(allowedClients));
         Host = servicePrincipal[5..servicePrincipal.IndexOf('@')];
         slots = new(maximumExchanges, maximumExchanges);
+        // Each admitted socket address has a fixed budget that leaves room for
+        // other peers when the global budget can accommodate multiple exchanges.
+        var peerLimit = Math.Clamp(maximumExchanges / 2, 1, 8);
+        peerSlots = clients.ToDictionary(address => address, _ => new SemaphoreSlim(peerLimit, peerLimit));
     }
 
     // Must be installed after UseHttps and before Kestrel's HTTP middleware.
@@ -51,9 +55,7 @@ internal sealed class KerberosHttpTransport : IDisposable
     {
         listener.Protocols = HttpProtocols.Http1;
         listener.Use(next => connection => {
-            var address = (connection.RemoteEndPoint as IPEndPoint)?.Address;
-            if (address?.IsIPv4MappedToIPv6 == true) address = address.MapToIPv4();
-            if (address is null || !allowedClients.Contains(address))
+            if (GetPeerSlots(connection) is null)
             { connection.Abort(); return Task.CompletedTask; }
             return next(connection);
         });
@@ -63,21 +65,42 @@ internal sealed class KerberosHttpTransport : IDisposable
         });
         listener.Use(next => async connection => {
             var stream = connection.Features.Get<ISslStreamFeature>()?.SslStream;
-            if (stream is null || !stream.TargetHostName.Equals(Host, StringComparison.OrdinalIgnoreCase))
+            var peer = GetPeerSlots(connection);
+            if (peer is null || stream is null || !stream.TargetHostName.Equals(Host, StringComparison.OrdinalIgnoreCase))
             { connection.Abort(); return; }
-            using var state = new Exchange(this, connection, stream);
+            using var state = new Exchange(this, connection, stream, peer);
             connection.Features.Set(state);
             await next(connection);
         });
     }
 
-    public void Dispose() => slots.Dispose();
+    private SemaphoreSlim? GetPeerSlots(ConnectionContext connection)
+    {
+        var address = (connection.RemoteEndPoint as IPEndPoint)?.Address;
+        if (address?.IsIPv4MappedToIPv6 == true) address = address.MapToIPv4();
+        return address is null ? null : peerSlots.GetValueOrDefault(address);
+    }
+
+    private bool TryReserve(SemaphoreSlim peer)
+    {
+        if (!peer.Wait(0)) return false;
+        if (slots.Wait(0)) return true;
+        peer.Release();
+        return false;
+    }
+
+    public void Dispose()
+    {
+        slots.Dispose();
+        foreach (var peer in peerSlots.Values) peer.Dispose();
+    }
 
     internal sealed class Exchange : IDisposable
     {
         private readonly object gate = new();
         private readonly KerberosHttpTransport owner;
         private readonly ConnectionContext connection;
+        private readonly SemaphoreSlim peer;
         internal SslStream Stream { get; }
         internal string Host => owner.Host;
         internal int? AuthorityPort => owner.authorityPort;
@@ -87,8 +110,8 @@ internal sealed class KerberosHttpTransport : IDisposable
         private bool terminal, held;
         private long started;
 
-        internal Exchange(KerberosHttpTransport owner, ConnectionContext connection, SslStream stream)
-        { this.owner = owner; this.connection = connection; Stream = stream; }
+        internal Exchange(KerberosHttpTransport owner, ConnectionContext connection, SslStream stream, SemaphoreSlim peer)
+        { this.owner = owner; this.connection = connection; Stream = stream; this.peer = peer; }
 
         internal HttpPeerAuthResult StepPeer(byte[]? token)
         {
@@ -102,7 +125,7 @@ internal sealed class KerberosHttpTransport : IDisposable
                 }
                 if (!held)
                 {
-                    if (!owner.slots.Wait(0)) { Dispose(); return new(503); }
+                    if (!owner.TryReserve(peer)) { Dispose(); return new(503); }
                     held = true;
                     started = System.Diagnostics.Stopwatch.GetTimestamp();
                     timer = new Timer(_ => Expire(), null, owner.timeout, Timeout.InfiniteTimeSpan);
@@ -150,9 +173,20 @@ internal sealed class KerberosHttpTransport : IDisposable
             {
                 if (terminal) return;
                 terminal = true;
-                timer?.Dispose(); timer = null;
-                acceptor?.Dispose(); acceptor = null;
-                if (held) { held = false; owner.slots.Release(); }
+                try
+                {
+                    timer?.Dispose(); timer = null;
+                    acceptor?.Dispose(); acceptor = null;
+                }
+                finally
+                {
+                    if (held)
+                    {
+                        held = false;
+                        owner.slots.Release();
+                        peer.Release();
+                    }
+                }
             }
         }
     }

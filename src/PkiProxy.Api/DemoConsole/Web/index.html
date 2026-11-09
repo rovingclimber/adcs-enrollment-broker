@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Live, read-only enrollment and network authorization flight recorder.">
+  <title>Enrollment flight recorder</title>
+  <link rel="stylesheet" href="/console.css">
+</head>
+<body>
+  <a class="skip" href="#timeline">Skip to transaction timeline</a>
+  <header>
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><span class="kicker">AD CS ENROLLMENT BROKER</span><strong>Enrollment flight recorder</strong></span></div>
+    <div class="header-state"><span id="connection" class="pill active">Loading</span><span id="updated">—</span></div>
+  </header>
+  <main>
+    <section id="provenance" class="provenance" aria-labelledby="provenance-title">
+      <span class="provenance-icon" aria-hidden="true">REC</span>
+      <div><strong id="provenance-title">Connecting to collector feed</strong><p id="provenance-text">Waiting for the first bounded session update.</p></div>
+      <span id="mode-tag" class="mode-tag">CONNECTING</span>
+    </section>
+    <section class="source-panel" aria-labelledby="source-title"><div class="section-heading"><div><p class="kicker">LIVE SOURCE HEALTH</p><h2 id="source-title">Evidence collectors</h2></div><span id="feed-age" class="mono">—</span></div><div id="sources" class="sources"></div></section>
+    <section id="live-dashboard" class="live-dashboard" hidden aria-labelledby="live-title">
+      <div class="live-heading"><div><p class="kicker">REAL-TIME LAB TELEMETRY</p><h1 id="live-title">Live component feed</h1><p>New evidence appears automatically as the endpoint enrolls and authenticates. No next button, no staged reveal.</p></div><div class="live-device"><span>Watching</span><strong id="live-hostname">—</strong><span id="live-mac" class="mono">—</span></div></div>
+      <div class="decision-grid">
+        <article id="authorization-card" class="decision-card waiting"><span class="card-label">LATEST NETWORK AUTHORIZATION</span><strong id="authorization-title">Waiting for EAP-TLS</strong><p id="authorization-detail">No fresh RADIUS decision has arrived in this session.</p><dl id="authorization-fields"></dl></article>
+        <article id="attachment-card" class="decision-card waiting"><span class="card-label">CURRENT CONTROLLER OBSERVATION</span><strong id="attachment-title">Waiting for station</strong><p id="attachment-detail">No current controller observation has arrived.</p><dl id="attachment-fields"></dl></article>
+      </div>
+      <div class="section-heading live-components-heading"><div><p class="kicker">WHAT EACH COMPONENT IS DOING</p><h2>Component activity</h2></div><span id="live-count" class="mono">0 live events</span></div>
+      <div id="component-grid" class="component-grid"></div>
+      <section class="live-log-panel" aria-labelledby="live-log-title"><div class="section-heading"><div><p class="kicker">CORRELATED LIVE LOG</p><h2 id="live-log-title">Enrollment and authorization events</h2></div><span class="mono">newest first</span></div><ol id="live-log" class="live-log"></ol></section>
+    </section>
+    <div id="story-view">
+    <section class="hero">
+      <div><p class="kicker">ONE DEVICE · ONE AUTHORIZATION STORY</p><h1 id="title">Loading demonstration…</h1><p id="summary"></p></div>
+      <div class="device-card" aria-label="Selected device"><span>Selected endpoint</span><strong id="hostname">—</strong><dl><div><dt>Asset</dt><dd id="asset">—</dd></div><div><dt>MAC</dt><dd id="mac">—</dd></div></dl></div>
+    </section>
+    <nav id="scenarios" class="scenario-tabs" aria-label="Enrollment journey"></nav>
+    <section id="controls" class="controls" aria-label="Replay controls">
+      <button id="restart" type="button">Restart story</button><button id="previous" type="button">Previous</button><button id="next" type="button" class="primary">Next event</button><button id="play" type="button">Auto play</button>
+      <label>Speed <select id="speed"><option value="2600">Talk pace</option><option value="1400">Quick</option><option value="600">Fast</option></select></label><span id="progress" class="progress">0 / 0 events</span>
+    </section>
+    <section class="flow-panel" aria-labelledby="flow-title"><div class="section-heading"><div><p class="kicker">BIRD'S-EYE FLOW</p><h2 id="flow-title">Transaction path</h2></div><span id="scenario-status" class="pill">Pending</span></div><ol id="flow" class="flow"></ol></section>
+    <section class="workspace">
+      <div class="timeline-panel"><div class="section-heading"><div><p class="kicker">CORRELATED EVIDENCE</p><h2>Evidence timeline</h2></div><span id="session-id" class="mono"></span></div><ol id="timeline" class="timeline"></ol></div>
+      <aside class="detail-panel" aria-live="polite"><p class="kicker">SELECTED EVIDENCE</p><h2 id="detail-title">Waiting for evidence</h2><p id="detail-text">New correlated events will appear here as the demonstration runs.</p><dl id="detail-fields"></dl><div class="boundary"><strong>Read-only evidence boundary</strong><p>This console displays sanitized, normalized evidence. It cannot enroll, issue, revoke, change directory membership, alter facts, or move a VLAN.</p></div></aside>
+    </section>
+    </div>
+  </main>
+  <footer><span id="snapshot">—</span><span>Secrets, EAP key material and private keys are never part of the event contract.</span></footer>
+  <script src="/console.js" defer></script>
+</body>
+</html>

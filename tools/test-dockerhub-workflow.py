@@ -35,7 +35,7 @@ def main() -> int:
             "only stable semantic-version releases may publish")
     require("secrets.DOCKERHUB_USERNAME" in text and "secrets.DOCKERHUB_TOKEN" in text,
             "Docker Hub credentials must come from GitHub secrets")
-    require("aquasec/trivy:0.73.0@sha256:" in text,
+    require("aquasec/trivy:0.76.2@sha256:" in text,
             "the vulnerability scanner must remain digest pinned")
     require(text.index("Scan the exact local image") < text.index("Log in to Docker Hub") <
             text.index("Push the exact scanned image") < text.index("Attest the published image"),
@@ -50,7 +50,17 @@ def main() -> int:
             "the in-image contract run must include its public fixtures")
     require("!lab/device-facts/*.json" in dockerignore and "!smoke/*.xml" in dockerignore,
             "the reviewed fixture files must enter the Docker build context")
-    print("Docker Hub workflow contracts passed: 15.")
+    require(all(f"!src/PkiProxy.Api/FactsWorkbench/Web/{asset}" in dockerignore for asset in (
+                "ui-system.css", "ui-theme.js", "ui-system-license.md")),
+            "every shared UI runtime and attribution asset must enter the Docker build context")
+    context_rules = dockerignore.splitlines()
+    require(all(f"!src/PkiProxy.Api/DemoConsole/{asset}" in context_rules for asset in (
+                "PresentationSchema.json", "Web/index.html", "Web/console.css", "Web/console.js")),
+            "the flight recorder schema and UI must enter the Docker build context")
+    require("dotnet restore PkiProxy.slnx --locked-mode -p:NuGetAudit=true -p:NuGetAuditMode=all "
+            "-p:TreatWarningsAsErrors=true" in dockerfile,
+            "the container build must fail on any dependency audit warning")
+    print("Docker Hub workflow contracts passed: 18.")
     return 0
 
 

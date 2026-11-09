@@ -51,6 +51,7 @@ internal sealed class BootstrapDeployment
     internal static async Task<BootstrapDeployment> LoadAsync(string path,
         BrokerEnrollmentPolicy kerberosPolicy, NativeEnrollmentService nativeEnrollment,
         KerberosListenerConfiguration kerberosListener,
+        IAuthoritativeDeviceFactsSource? factsSource = null,
         CancellationToken cancellationToken = default)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Bootstrap hosting requires Linux.");
@@ -90,8 +91,12 @@ internal sealed class BootstrapDeployment
                 value.MaximumHistoryRecords, value.MaximumHistoryBytes));
         intake.BindStoreGeneration(value.AttestationDirectory, value.PairingDirectory,
             value.TransactionDirectory);
-        var authoritativeFacts = new JsonFileDeviceFactsSource(value.DeviceFactsFile);
-        await authoritativeFacts.ValidateAsync(cancellationToken);
+        var localFacts = new JsonFileDeviceFactsSource(value.DeviceFactsFile);
+        await localFacts.ValidateAsync(cancellationToken);
+        if (factsSource is LiveHttpDeviceFactsSource live &&
+            !string.Equals(live.CachePath, Path.GetFullPath(value.DeviceFactsFile), StringComparison.Ordinal))
+            throw new InvalidDataException("Bootstrap and live connector must use the same immutable facts catalogue.");
+        var authoritativeFacts = factsSource ?? localFacts;
         BootstrapTechnicianAuthenticator Authorization(TechnicianCapability capability) => new(
             new BootstrapTechnicianAuthenticationPolicy(
                 [BootstrapKerberosAuthenticationService.Scheme],

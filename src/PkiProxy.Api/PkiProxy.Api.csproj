@@ -6,7 +6,10 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="FactsWorkbench/Web/*" LogicalName="FactsWorkbench.%(Filename)%(Extension)" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="[10.0.13]" />
-    <PackageReference Include="System.DirectoryServices.Protocols" Version="[10.0.13]" />
+    <EmbeddedResource Include="DemoConsole/Web/*" LogicalName="DemoConsole.%(Filename)%(Extension)" />
+    <Content Remove="DemoConsole/PresentationSchema.json" />
+    <EmbeddedResource Include="DemoConsole/PresentationSchema.json" LogicalName="DemoConsole.PresentationSchema.json" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="[10.0.14]" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="[10.0.14]" />
   </ItemGroup>
 </Project>

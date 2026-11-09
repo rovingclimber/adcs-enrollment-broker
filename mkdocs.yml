@@ -42,6 +42,7 @@ nav:
   - Why this exists: why.md
   - Quick start: quick-start.md
   - Concepts: concepts.md
+  - Facts connectors: facts-connectors.md
   - Architecture:
       - System context: architecture/system-context.md
       - Components: architecture/components.md

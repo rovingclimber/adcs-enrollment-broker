@@ -10,6 +10,7 @@ deployment overlay.
 | Kerberos | Realm, service principal, credential supervisor, channel binding and directory policy |
 | Directory | TLS endpoint, base DN, exact computer and technician group identifiers, timeouts |
 | Facts | Owner-only facts, immutable asset catalogue, revision policy, audit and recovery paths |
+| Facts connector | Optional strict profile, exact HTTPS origin, lookup identity, mappings, credential files and cache-age policy |
 | CA | HTTPS enrollment endpoint, pinned trust and revocation, exact template and response limits |
 | Signer | `pkcs11` or explicit development `pem-file`, generation pin, socket identity and replay store |
 | PKCS#11 | Absolute module and PIN-file paths, exact token label and serial, key ID and bounded sessions |
@@ -35,6 +36,22 @@ two UIDs; a shared group-readable file is rejected. Environment variables hold
 only their in-container paths. Policy, trust, facts, bootstrap, and facts
 management files are a separate non-secret deployment overlay and still require
 restricted write custody outside Git.
+
+`Broker__FactsConnectorProfileFile` enables live facts lookup and requires the
+existing `Broker__DeviceFactsFile` as its accepted cache. First enrollment uses
+the live result. Renewal can use the cache only after a transient HTTP failure
+and only within `MaximumCacheAgeSeconds`; malformed, ambiguous or identity-
+mismatched upstream data never triggers fallback. Use a `snapshot` profile only
+with the offline `--facts-connector-sync PROFILE FACTS` command, which validates
+and atomically publishes one complete revision.
+
+Connector profiles and every referenced bearer-token, client-certificate,
+private-key or custom-root file must be absolute owner-only regular files. The
+profile supports `none`, `bearer`, `basic`, `api-key`, `mtls` and their defined
+mTLS combinations.
+HTTPS validation, hostname checking, response limits and redirects are not
+operator-disableable. See [Facts connectors](../facts-connectors.md) for the
+complete request and mapping contract.
 
 The example Compose file mounts subdirectories below
 `PKIPROXY_DEPLOYMENT_ROOT`: `config`, `trust`, `facts`, `tls`, `secrets`,

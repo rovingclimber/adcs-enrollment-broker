@@ -30,6 +30,7 @@ internal sealed record BootstrapIntakeQuota(int MaximumActiveRecords, long Maxim
 [SupportedOSPlatform("linux")]
 internal sealed class FileBootstrapIntakeLedger
 {
+    private const string RecordPrefix = "intake-";
     internal enum RecoveryDisposition
     {
         Removed,
@@ -263,7 +264,7 @@ internal sealed class FileBootstrapIntakeLedger
     private static bool TryLedgerName(string name, string suffix, out string? id)
     {
         id = null;
-        if (!name.StartsWith("intake-", StringComparison.Ordinal) || !name.EndsWith(suffix, StringComparison.Ordinal))
+        if (!name.StartsWith(RecordPrefix, StringComparison.Ordinal) || !name.EndsWith(suffix, StringComparison.Ordinal))
             return false;
         var candidate = name[7..^suffix.Length];
         if (!IsId(candidate)) return false;
@@ -447,9 +448,9 @@ internal sealed class FileBootstrapIntakeLedger
         if (closeResult != 0) throw new IOException("Cannot close intake directory.");
     }
 
-    private static string ReservedName(string id) => "intake-" + id + ".reserved.json";
-    private static string CommittedName(string id) => "intake-" + id + ".committed.json";
-    private static string TrustedName(string id) => "intake-" + id + ".trusted.json";
+    private static string ReservedName(string id) => RecordPrefix + id + ".reserved.json";
+    private static string CommittedName(string id) => RecordPrefix + id + ".committed.json";
+    private static string TrustedName(string id) => RecordPrefix + id + ".trusted.json";
     private static bool IsId(string? value) => value is { Length: 32 } && value.All(char.IsAsciiHexDigit);
     private static bool IsHash(string? value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigit);
 

@@ -1,0 +1,56 @@
+/* Shared UI core: native controls, compact spacing, semantic colours. */
+:root{
+ color-scheme:light;
+ --rc-bg:#f5f7fa;--rc-surface:#fff;--rc-surface-subtle:#f8fafc;
+ --rc-text:#192330;--rc-muted:#526173;--rc-border:#cbd3de;--rc-control-border:#7c899d;
+ --rc-accent:#1556bd;--rc-accent-soft:#e9f0fc;--rc-on-accent:#fff;
+ --rc-danger:#a21b2d;--rc-danger-soft:#fff0f2;--rc-focus:#1556bd;
+ --rc-radius:4px;--rc-font:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+:root[data-rc-theme="dark"]{
+ color-scheme:dark;
+ --rc-bg:#151a21;--rc-surface:#1d242e;--rc-surface-subtle:#18202a;
+ --rc-text:#edf1f7;--rc-muted:#b4c0d0;--rc-border:#65748a;--rc-control-border:#65748a;
+ --rc-accent:#a0c4ff;--rc-accent-soft:#263e5e;--rc-on-accent:#11213a;
+ --rc-danger:#ffacb8;--rc-danger-soft:#482632;--rc-focus:#a0c4ff;
+}
+.rc-ui{margin:0;background:var(--rc-bg);color:var(--rc-text);font:14px/1.5 var(--rc-font);font-synthesis:none}
+.rc-ui *,.rc-ui *::before,.rc-ui *::after{box-sizing:border-box}
+.rc-ui [hidden]{display:none!important}
+.rc-ui a{color:var(--rc-accent)}
+.rc-ui :where(button,input,select,textarea){font:inherit;color:var(--rc-text);border:1px solid var(--rc-control-border);border-radius:var(--rc-radius);background:var(--rc-surface)}
+.rc-ui :where(button,.rc-button){min-height:36px;padding:.45rem .75rem;font-weight:600;cursor:pointer;line-height:1.4}
+.rc-ui :where(button,.rc-button):hover:not(:disabled){background:var(--rc-accent-soft)}
+.rc-ui :where(input,select,textarea){min-height:38px;padding:.45rem .65rem;width:100%;min-width:0;font-weight:400}
+.rc-ui textarea{resize:vertical}
+.rc-ui input::placeholder,.rc-ui textarea::placeholder{color:var(--rc-muted);opacity:1}
+.rc-ui :where(input[type=checkbox],input[type=radio]){width:auto;min-height:0;accent-color:var(--rc-accent)}
+.rc-ui :where(button,input,select,textarea):disabled{opacity:.6;cursor:not-allowed}
+.rc-ui :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid var(--rc-focus);outline-offset:3px}
+.rc-ui .rc-button-primary{color:var(--rc-on-accent);background:var(--rc-accent);border-color:var(--rc-accent)}
+.rc-ui .rc-button-primary:hover:not(:disabled){background:var(--rc-accent);text-decoration:underline}
+.rc-ui .rc-button-danger{color:var(--rc-danger)}
+.rc-ui .rc-button-danger:hover:not(:disabled){background:var(--rc-danger-soft)}
+.rc-ui .rc-header{display:flex;align-items:center;gap:1rem;min-height:60px;padding:.65rem 1.5rem;background:var(--rc-surface);border-bottom:1px solid var(--rc-border)}
+.rc-ui .rc-brand{font-size:1rem;font-weight:700;color:var(--rc-text);text-decoration:none}
+.rc-ui .rc-theme-picker{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--rc-muted)}
+.rc-ui .rc-theme-picker select{width:auto;min-height:34px}
+.rc-ui .rc-main{max-width:1600px;margin:auto;padding:1.5rem}
+.rc-ui .rc-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.rc-ui h1{font-size:1.65rem;line-height:1.25;margin:0 0 .35rem;letter-spacing:-.025em}
+.rc-ui .rc-heading p{margin:.3rem 0}
+.rc-ui .rc-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
+.rc-ui .rc-panel{background:var(--rc-surface);border:1px solid var(--rc-border);border-radius:var(--rc-radius)}
+.rc-ui .rc-muted{color:var(--rc-muted)}
+.rc-ui .rc-status{font-size:.8rem;padding:.25rem .5rem;border-radius:var(--rc-radius);background:var(--rc-surface-subtle)}
+.rc-ui .rc-field{display:block;margin-bottom:1rem;font-weight:600}
+.rc-ui .rc-field :where(input,select,textarea){margin-top:.35rem}
+.rc-ui table{width:100%;border-collapse:collapse;text-align:left}
+.rc-ui :where(th,td){padding:.65rem .75rem;border-bottom:1px solid var(--rc-border)}
+.rc-ui th{font-weight:600;background:var(--rc-surface-subtle)}
+.rc-ui dialog{width:min(520px,calc(100vw - 32px));max-height:85vh;overflow:auto;border:1px solid var(--rc-border);border-radius:var(--rc-radius);padding:1.5rem;background:var(--rc-surface);color:var(--rc-text)}
+.rc-ui dialog::backdrop{background:rgb(0 0 0 / .55)}
+.rc-ui dialog h2{margin-top:0}
+@media(max-width:720px){.rc-ui .rc-main{padding:1rem}.rc-ui .rc-header{padding:.65rem 1rem;flex-wrap:wrap}.rc-ui .rc-heading{align-items:flex-start;flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.rc-ui *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+@media(forced-colors:active){.rc-ui :focus-visible{outline-color:Highlight}.rc-ui .rc-button-primary{border:2px solid ButtonText}}

@@ -86,7 +86,7 @@ internal sealed class BootstrapTechnicianAuthenticator
         ArgumentNullException.ThrowIfNull(authentication);
         if (!authentication.Succeeded)
             return Denied(BootstrapTechnicianAuthenticationResult.AuthenticationNotSucceeded);
-        var ticket = authentication.Ticket!;
+        var ticket = authentication.Ticket;
 
         var identities = ticket.Principal.Identities.Where(identity => identity.IsAuthenticated).ToArray();
         if (identities.Length != 1)

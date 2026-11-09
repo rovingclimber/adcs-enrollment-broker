@@ -11,6 +11,10 @@ namespace PkiProxy.Domain;
 // transaction, but can never make the request reusable or authorize a retry.
 internal sealed class FileBootstrapPairingCoordinator
 {
+    private const string BindingPrefix = "pairing-binding-";
+    private const string CodePrefix = "pairing-code-";
+    private const string RequestPrefix = "pairing-";
+    private const string RecordExtension = ".json";
     private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode RecordMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private static readonly JsonSerializerOptions Options = new()
@@ -65,20 +69,11 @@ internal sealed class FileBootstrapPairingCoordinator
         if (ReadGraph(requestId) is not null) return (BootstrapPairingResult.AlreadyExists, null);
         var slot = reservedOrdinal ?? ReserveSlot(requestId);
         if (slot == 0) return (BootstrapPairingResult.CapacityExceeded, null);
-        var bindingName = "pairing-binding-" + Convert.ToHexString(binding.CsrSha256) + ".json";
+        var bindingName = BindingPrefix + Convert.ToHexString(binding.CsrSha256) + RecordExtension;
         if (!CreateReservation(bindingName, requestId))
             return (BootstrapPairingResult.AlreadyExists, null);
 
-        string code;
-        string codeKey;
-        for (var attempt = 0; ; attempt++)
-        {
-            if (attempt >= 32) throw new InvalidOperationException("Unable to allocate a unique pairing code.");
-            code = codes.Generate();
-            if (!IsCode(code)) throw new InvalidOperationException("Pairing code generator returned an invalid code.");
-            codeKey = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(code)));
-            if (CreateReservation("pairing-code-" + codeKey + ".json", requestId)) break;
-        }
+        var (code, codeKey) = ReserveCode(requestId);
 
         var salt = RandomNumberGenerator.GetBytes(32);
         var expiresAt = now.Add(policy.Lifetime);
@@ -88,14 +83,9 @@ internal sealed class FileBootstrapPairingCoordinator
             policy.MaximumAttempts, slot);
         CreateRequired(CreatedName(requestId), created);
 
-        BootstrapStoreResult attestation;
-        try { attestation = attestations.Record(binding, now, policy.Lifetime); }
-        catch
-        {
-            // No ready marker means approval is impossible. Preserve all markers
-            // for explicit operator reconciliation and rethrow the storage fault.
-            throw;
-        }
+        // If this fails, preserve the incomplete graph for reconciliation.
+        // Approval is blocked until the ready marker exists.
+        var attestation = attestations.Record(binding, now, policy.Lifetime);
         if (attestation != BootstrapStoreResult.Recorded)
         {
             CreateRequired(MarkerName(requestId, "failed"),
@@ -134,19 +124,17 @@ internal sealed class FileBootstrapPairingCoordinator
         if (attempt == 0) return new(BootstrapPairingResult.AttemptsExhausted);
         if (!Matches(created, displayedCode)) return new(attempt == created.MaximumAttempts
             ? BootstrapPairingResult.AttemptsExhausted : BootstrapPairingResult.InvalidCode);
-        if (!assets.Contains(authoritativeAssetId)) return new(attempt == created.MaximumAttempts
+        var dnsHostName = assets.FindDnsHostName(authoritativeAssetId);
+        if (!ValidatedDeviceFactsSnapshot.IsHostname(dnsHostName)) return new(attempt == created.MaximumAttempts
             ? BootstrapPairingResult.AttemptsExhausted : BootstrapPairingResult.AssetUnavailable);
 
         graph = ReadGraph(requestId)!;
         if (graph.Created != created) throw new InvalidDataException("Pairing record changed.");
         if (graph.Claimed is not null) return new(BootstrapPairingResult.InvalidState);
 
-        var audit = new BootstrapPairingAudit(requestId, technician.Subject,
-            technician.AuthenticationMethod, authoritativeAssetId, now,
-            created.CsrSha256, created.SpkiSha256, technician.Capability);
-        var claim = new TransitionRecord(2, requestId, now, technician.Subject,
+        var claim = new TransitionRecord(3, requestId, now, technician.Subject,
             technician.AuthenticationMethod, authoritativeAssetId,
-            created.CsrSha256, created.SpkiSha256, technician.Capability);
+            created.CsrSha256, created.SpkiSha256, technician.Capability, dnsHostName);
         if (!Create(MarkerName(requestId, "claimed"), claim))
         {
             _ = ReadGraph(requestId);
@@ -162,7 +150,7 @@ internal sealed class FileBootstrapPairingCoordinator
         ValidateOwnClaim(created, claim);
         CreateRequired(MarkerName(requestId, "approved"), claim);
         ValidateOwnClaim(created, claim);
-        return new(BootstrapPairingResult.Approved, audit);
+        return new(BootstrapPairingResult.Approved, Audit(created, claim));
     }
 
     internal BootstrapPairingLookup Lookup(string requestId, DateTimeOffset now)
@@ -198,13 +186,11 @@ internal sealed class FileBootstrapPairingCoordinator
         if (!IsRequestId(requestId) || !binding.HasExpectedLengths())
             throw new ArgumentException("Exact pairing identity required.");
         var created = ReadCreated(requestId);
-        if (created is not null)
-        {
-            if (created.CsrSha256 != Convert.ToHexString(binding.CsrSha256) ||
-                created.SpkiSha256 != Convert.ToHexString(binding.SubjectPublicKeyInfoSha256) ||
-                (requireExpiry && now < created.ExpiresAt))
-                throw new InvalidDataException("Pairing graph is not collectable.");
-        }
+        if (created is not null &&
+            (created.CsrSha256 != Convert.ToHexString(binding.CsrSha256) ||
+             created.SpkiSha256 != Convert.ToHexString(binding.SubjectPublicKeyInfoSha256) ||
+             (requireExpiry && now < created.ExpiresAt)))
+            throw new InvalidDataException("Pairing graph is not collectable.");
         if (HasTrustedTransition(requestId))
             throw new InvalidDataException("Trusted pairing graph cannot be collected.");
 
@@ -214,23 +200,21 @@ internal sealed class FileBootstrapPairingCoordinator
         var names = System.IO.Directory.EnumerateFiles(directory)
             .Select(Path.GetFileName)
             .Where(name => name is not null &&
-                (name.StartsWith("pairing-" + requestId + ".", StringComparison.Ordinal) ||
-                 name.StartsWith("pairing-binding-", StringComparison.Ordinal) ||
-                 name.StartsWith("pairing-code-", StringComparison.Ordinal) ||
+                (name.StartsWith(RequestPrefix + requestId + ".", StringComparison.Ordinal) ||
+                 name.StartsWith(BindingPrefix, StringComparison.Ordinal) ||
+                 name.StartsWith(CodePrefix, StringComparison.Ordinal) ||
                  name.StartsWith("pairing-slot-", StringComparison.Ordinal)))
             .Cast<string>().ToArray();
         foreach (var name in names)
         {
             var path = Path.Combine(directory, name);
-            if (name.StartsWith("pairing-" + requestId + ".", StringComparison.Ordinal))
+            if (name.StartsWith(RequestPrefix + requestId + ".", StringComparison.Ordinal))
             {
                 _ = CheckFile(path);
                 File.Delete(path);
                 continue;
             }
-            Reservation reservation;
-            try { reservation = ReadReservation(name); }
-            catch (InvalidDataException) { throw; }
+            var reservation = ReadReservation(name);
             if (reservation.RequestId == requestId) File.Delete(path);
         }
         SyncDirectory();
@@ -251,7 +235,8 @@ internal sealed class FileBootstrapPairingCoordinator
         approved.At,
         approved.CsrSha256 ?? throw new InvalidDataException("Approved pairing has no CSR binding."),
         approved.SpkiSha256 ?? throw new InvalidDataException("Approved pairing has no SPKI binding."),
-        approved.TechnicianCapability ?? PkiProxy.Authentication.TechnicianCapabilities.BootstrapApprove);
+        approved.TechnicianCapability ?? PkiProxy.Authentication.TechnicianCapabilities.BootstrapApprove,
+        approved.ApprovedDnsHostName);
 
     private int ReserveAttempt(CreatedRecord created, DateTimeOffset now)
     {
@@ -275,8 +260,20 @@ internal sealed class FileBootstrapPairingCoordinator
     private int ReserveSlot(string requestId)
     {
         for (var slot = 1; slot <= policy.MaximumRetainedSessions; slot++)
-            if (CreateReservation("pairing-slot-" + slot.ToString("D5") + ".json", requestId)) return slot;
+            if (CreateReservation("pairing-slot-" + slot.ToString("D5") + RecordExtension, requestId)) return slot;
         return 0;
+    }
+
+    private (string Code, string Key) ReserveCode(string requestId)
+    {
+        for (var attempt = 0; attempt < 32; attempt++)
+        {
+            var code = codes.Generate();
+            if (!IsCode(code)) throw new InvalidOperationException("Pairing code generator returned an invalid code.");
+            var key = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(code)));
+            if (CreateReservation(CodePrefix + key + RecordExtension, requestId)) return (code, key);
+        }
+        throw new InvalidOperationException("Unable to allocate a unique pairing code.");
     }
 
     private CreatedRecord? ReadCreated(string requestId)
@@ -315,11 +312,11 @@ internal sealed class FileBootstrapPairingCoordinator
     }
 
     private static string[] ReservationNames(CreatedRecord created) => created.Version == 3
-        ? ["pairing-binding-" + created.CsrSha256 + ".json",
-            "pairing-code-" + created.CodeReservationSha256 + ".json"]
-        : ["pairing-binding-" + created.CsrSha256 + ".json",
-            "pairing-code-" + created.CodeReservationSha256 + ".json",
-            "pairing-slot-" + created.Slot.ToString("D5") + ".json"];
+        ? [BindingPrefix + created.CsrSha256 + RecordExtension,
+            CodePrefix + created.CodeReservationSha256 + RecordExtension]
+        : [BindingPrefix + created.CsrSha256 + RecordExtension,
+            CodePrefix + created.CodeReservationSha256 + RecordExtension,
+            "pairing-slot-" + created.Slot.ToString("D5") + RecordExtension];
 
     private PairingGraph? ReadGraph(string requestId)
     {
@@ -351,9 +348,9 @@ internal sealed class FileBootstrapPairingCoordinator
         var attemptNames = Enumerable.Range(1, created.MaximumAttempts)
             .Select(ordinal => Path.GetFileName(MarkerName(requestId, "attempt-" + ordinal.ToString("D2"))))
             .ToHashSet(StringComparer.Ordinal);
-        foreach (var path in System.IO.Directory.EnumerateFileSystemEntries(directory, "pairing-" + requestId + ".attempt-*.json"))
-            if (!attemptNames.Contains(Path.GetFileName(path)))
-                throw new InvalidDataException("Pairing attempt is outside its budget.");
+        if (System.IO.Directory.EnumerateFileSystemEntries(directory, RequestPrefix + requestId + ".attempt-*.json")
+            .Any(path => !attemptNames.Contains(Path.GetFileName(path))))
+            throw new InvalidDataException("Pairing attempt is outside its budget.");
         // Ten is the schema's absolute attempt bound, including markers beyond
         // this request's smaller configured budget.
         for (var ordinal = 10; ordinal >= 1; ordinal--)
@@ -373,17 +370,15 @@ internal sealed class FileBootstrapPairingCoordinator
             nextAt = attempt.At;
             count++;
         }
-        if (claimed is not null)
-        {
-            if (ready is null || count == 0 || claimed.At < ready.At || claimed.At < lastAt ||
+        if (claimed is not null &&
+            (ready is null || count == 0 || claimed.At < ready.At || claimed.At < lastAt ||
                 !IsIdentifier(claimed.TechnicianSubject, 256) || !IsIdentifier(claimed.AuthenticationMethod, 64) ||
                 !IsIdentifier(claimed.AssetId, 256) || claimed.CsrSha256 != created.CsrSha256 ||
                 claimed.SpkiSha256 != created.SpkiSha256 ||
-                claimed.Version == 2 && claimed.TechnicianCapability !=
+                claimed.Version >= 2 && claimed.TechnicianCapability !=
                     PkiProxy.Authentication.TechnicianCapabilities.BootstrapApprove ||
-                claimed.Version == 1 && claimed.TechnicianCapability is not null)
-                throw new InvalidDataException("Invalid pairing approval claim.");
-        }
+                claimed.Version == 1 && claimed.TechnicianCapability is not null))
+            throw new InvalidDataException("Invalid pairing approval claim.");
         if (approved is not null && (claimed is null || approved != claimed))
             throw new InvalidDataException("Pairing approval does not equal its claim.");
         return new(created, ready, failed, claimed, approved, count, lastAt);
@@ -394,9 +389,11 @@ internal sealed class FileBootstrapPairingCoordinator
         var name = MarkerName(created.RequestId, stage);
         if (!ExistsChecked<TransitionRecord>(name)) return null;
         var value = ReadJson<TransitionRecord>(name);
-        if (value.Version is not 1 and not 2 || value.RequestId != created.RequestId ||
+        if (value.Version is < 1 or > 3 || value.RequestId != created.RequestId ||
             value.At < created.CreatedAt || value.At >= created.ExpiresAt)
             throw new InvalidDataException("Invalid pairing transition.");
+        if (value.Version == 3 && !ValidatedDeviceFactsSnapshot.IsHostname(value.ApprovedDnsHostName))
+            throw new InvalidDataException("Pairing transition requires an approved hostname.");
         return value;
     }
 
@@ -498,10 +495,13 @@ internal sealed class FileBootstrapPairingCoordinator
             if (document.RootElement.ValueKind != JsonValueKind.Object)
                 throw new InvalidDataException("Pairing JSON must be an object.");
             var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in document.RootElement.EnumerateObject())
-                if (!names.Add(property.Name)) throw new InvalidDataException("Duplicate pairing JSON property.");
+            if (document.RootElement.EnumerateObject().Any(property => !names.Add(property.Name)))
+                throw new InvalidDataException("Duplicate pairing JSON property.");
             var value = document.RootElement.Deserialize<T>(Options)
                 ?? throw new InvalidDataException("Missing pairing marker.");
+            if (value is TransitionRecord { Version: < 3 } &&
+                names.Contains(nameof(TransitionRecord.ApprovedDnsHostName)))
+                throw new InvalidDataException("Legacy pairing marker carries unexpected hostname authority.");
             // Reopen the pathname as well as checking metadata: a replacement
             // can leave the first stream reading an unlinked, stale inode.
             var after = CheckFile(path);
@@ -567,8 +567,8 @@ internal sealed class FileBootstrapPairingCoordinator
 
     private static string Verifier(byte[] salt, string code) =>
         Convert.ToHexString(SHA256.HashData([.. salt, .. Encoding.ASCII.GetBytes(code)]));
-    private static string CreatedName(string requestId) => "pairing-" + requestId + ".created.json";
-    private string MarkerName(string requestId, string stage) => Path.Combine(directory, "pairing-" + requestId + "." + stage + ".json");
+    private static string CreatedName(string requestId) => RequestPrefix + requestId + ".created.json";
+    private string MarkerName(string requestId, string stage) => Path.Combine(directory, RequestPrefix + requestId + "." + stage + RecordExtension);
     private static bool IsHash(string? value) => value is { Length: 64 } && value.All(c => char.IsAsciiDigit(c) || c is >= 'A' and <= 'F');
     private static bool IsCode(string? value) => value is { Length: 6 } && value.All(char.IsAsciiDigit);
     private static bool IsRequestId(string? value) => value is { Length: 32 } && value.All(c => char.IsAsciiDigit(c) || c is >= 'A' and <= 'F');
@@ -587,7 +587,8 @@ internal sealed class FileBootstrapPairingCoordinator
     private sealed record AttemptRecord(int Version, string RequestId, int Attempt, DateTimeOffset At);
     private sealed record TransitionRecord(int Version, string RequestId, DateTimeOffset At,
         string? TechnicianSubject, string? AuthenticationMethod, string? AssetId,
-        string? CsrSha256, string? SpkiSha256, string? TechnicianCapability = null);
+        string? CsrSha256, string? SpkiSha256, string? TechnicianCapability = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ApprovedDnsHostName = null);
     private sealed record PairingGraph(CreatedRecord Created, TransitionRecord? Ready, TransitionRecord? Failed,
         TransitionRecord? Claimed, TransitionRecord? Approved, int Attempts, DateTimeOffset LastAttemptAt);
 

@@ -1,0 +1,41 @@
+{
+  "Version": 1,
+  "Mode": "snapshot",
+  "BaseUri": "https://instance.service-now.com/",
+  "Method": "GET",
+  "Path": "/api/now/table/cmdb_ci_computer",
+  "IdentityField": "assetId",
+  "IdentityPlacement": "query",
+  "IdentityName": "sysparm_query",
+  "IdentityPrefix": "asset_tag=",
+  "IdentitySuffix": null,
+  "Query": {
+    "sysparm_fields": "name,asset_tag,u_device_class,u_use_case,u_location,u_management_domain",
+    "sysparm_limit": "2",
+    "sysparm_display_value": "true"
+  },
+  "Headers": null,
+  "Authentication": {
+    "Type": "bearer-mtls",
+    "BearerTokenFile": "/run/secrets/servicenow-access-token",
+    "ClientCertificateFile": "/run/secrets/servicenow-client.crt",
+    "ClientPrivateKeyFile": "/run/secrets/servicenow-client.key"
+  },
+  "Response": {
+    "RecordPointer": "/result",
+    "Cardinality": "exactly-one",
+    "Mappings": {
+      "hostname": "/name",
+      "assetId": "/asset_tag",
+      "deviceClass": "/u_device_class",
+      "useCase": "/u_use_case",
+      "location": "/u_location",
+      "managementDomain": "/u_management_domain"
+    }
+  },
+  "TimeoutSeconds": 10,
+  "MaximumResponseBytes": 262144,
+  "MaximumJsonDepth": 16,
+  "MaximumCacheAgeSeconds": 86400,
+  "TrustRootFile": null
+}

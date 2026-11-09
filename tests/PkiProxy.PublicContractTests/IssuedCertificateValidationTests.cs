@@ -1,8 +1,10 @@
 using System.Formats.Asn1;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using PkiProxy.Authentication;
 using PkiProxy.Domain;
 using PkiProxy.Protocol.Wstep;
 
@@ -101,8 +103,13 @@ internal static class IssuedCertificateValidationTests
         IssuedCertificateValidator.ConfigureOfflineChainPolicy(issuedPolicyChain.ChainPolicy, root, now.UtcDateTime);
         var issuedPolicy = issuedPolicyChain.ChainPolicy;
         var tlsPolicy = KerberosCesTransport.CreatePreliminaryTlsChainPolicy(root);
+        var clientTlsOptions = new SslServerAuthenticationOptions();
+        CertificateHttpTransport.ConfigureTlsAuthentication(clientTlsOptions, root);
+        var clientTlsPolicy = clientTlsOptions.CertificateChainPolicy ??
+            throw new InvalidOperationException("The client-certificate TLS listener requires a preliminary chain policy.");
         if (!issuedPolicy.DisableCertificateDownloads || issuedPolicy.RevocationMode != X509RevocationMode.NoCheck ||
-            !tlsPolicy.DisableCertificateDownloads || tlsPolicy.RevocationMode != X509RevocationMode.NoCheck)
+            !tlsPolicy.DisableCertificateDownloads || tlsPolicy.RevocationMode != X509RevocationMode.NoCheck ||
+            !clientTlsPolicy.DisableCertificateDownloads || clientTlsPolicy.RevocationMode != X509RevocationMode.NoCheck)
             throw new InvalidOperationException("Every preliminary NoCheck chain must explicitly disable certificate downloads.");
 
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -135,6 +142,8 @@ internal static class IssuedCertificateValidationTests
         using var chain = new X509Chain();
         IssuedCertificateValidator.ConfigureOfflineChainPolicy(chain.ChainPolicy, root, now.UtcDateTime);
         if (chain.Build(leaf)) throw new InvalidOperationException("A missing intermediate was unexpectedly accepted.");
+        using var clientTlsChain = new X509Chain { ChainPolicy = clientTlsPolicy };
+        if (clientTlsChain.Build(leaf)) throw new InvalidOperationException("Client TLS accepted a missing intermediate.");
         Thread.Sleep(100);
         if (listener.Pending()) throw new InvalidOperationException("Preliminary chain validation attempted an AIA download.");
 
@@ -142,7 +151,8 @@ internal static class IssuedCertificateValidationTests
             RandomNumberGenerator.GetBytes(16));
         using var directChain = new X509Chain();
         IssuedCertificateValidator.ConfigureOfflineChainPolicy(directChain.ChainPolicy, root, now.UtcDateTime);
-        if (!directChain.Build(direct)) throw new InvalidOperationException("Pinned-root offline chain validation regressed.");
+        if (!directChain.Build(direct) || !clientTlsChain.Build(direct))
+            throw new InvalidOperationException("Pinned-root offline chain validation regressed.");
         Console.WriteLine("Offline preliminary chain policies rejected AIA retrieval and retained pinned-root validation.");
     }
 }

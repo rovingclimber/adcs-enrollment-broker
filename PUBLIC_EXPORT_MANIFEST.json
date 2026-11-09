@@ -1,52 +1,52 @@
 {
-  "fileCount": 217,
+  "fileCount": 233,
   "files": [
     {
       "mode": "100644",
       "path": ".dockerignore",
-      "sha256": "554ffc2524d51bc338556f0eb9e6b469dce25b1f029ff80d11ac6d02f8ea73e9",
-      "size": 903
+      "sha256": "de3d8655f5a82d9df25516ae584ca21d501b85118d3c415f0fc0af30e0007343",
+      "size": 1279
     },
     {
       "mode": "100644",
       "path": ".env.example",
-      "sha256": "cac9dbb735a3f097f59011c1510243346775aaac46ad3a9404fbba3b04eee929",
-      "size": 2908
+      "sha256": "85d61ad74c06b6056e26ba83ac4a8e3a6c6bd1576aba2ac5705ed226990f62da",
+      "size": 3031
     },
     {
       "mode": "100644",
       "path": ".gitattributes",
-      "sha256": "7fd8caded08aace1b9fb79db6322c1ec88f6a97409f19a181233ad23cd7b21e8",
-      "size": 187
+      "sha256": "80e37827052dc7f01e47db2344076e7929ca277c4d02a2be9d6dcff3d9c213de",
+      "size": 446
     },
     {
       "mode": "100644",
       "path": ".github/workflows/codeql.yml",
-      "sha256": "b6df6b3b91032935fd1432b0eb841d634c3afb0aff152268af3680b2dc1b5c60",
+      "sha256": "9cf5d12e8595a961682a27aab5aa654f3cd12d1fca312e7ebfeff9c7af027bd8",
       "size": 1628
     },
     {
       "mode": "100644",
       "path": ".github/workflows/container.yml",
-      "sha256": "d7f3cf5e7673ab31d3790cb2c1ae8b483cf9611b5ff4c63c331a5215517f1ea3",
+      "sha256": "afec073a49fe292fb24545732a53ef57079e30a40716a1119d0bd09ed358d50c",
       "size": 6855
     },
     {
       "mode": "100644",
       "path": ".gitignore",
-      "sha256": "ee9f1e538cde691d13e468419266051c1ee5fd913ba97feb860629b7a154fb2e",
-      "size": 212
+      "sha256": "0a69e26c0b36e27590ae546f304f5035f6e1abd9eebaa7b3fe04b4d20fc2c555",
+      "size": 227
     },
     {
       "mode": "100644",
       "path": ".gitlab-ci.yml",
-      "sha256": "b0015461c296cb3213bafbf1d1decc6eb399802757743f2cf87212b86362bc46",
-      "size": 9811
+      "sha256": "ae938e9bbe805960dfefd092eff96aea0a2acebcdace62ce0003a437be246e9e",
+      "size": 10038
     },
     {
       "mode": "100644",
       "path": ".gitleaksignore",
-      "sha256": "0a34a32e509d6fad905c63b51ddf840c916b9739b6ad29f21779078ccf3b8d57",
+      "sha256": "1308a11d25b6d90ae5d1ac5c719f56a78fe84823710fa2c6188a5b572a685d8d",
       "size": 577
     },
     {
@@ -64,14 +64,14 @@
     {
       "mode": "100644",
       "path": "Dockerfile",
-      "sha256": "d2206e1a6374afc8d4ecdd1ce73c20bdb548089ce1fdb7e7916c28e51c55b4fc",
-      "size": 2763
+      "sha256": "42389acc42f164978e3991b4d114b4ccd6ef08c56118cf93da3031172f3bb2e0",
+      "size": 3059
     },
     {
       "mode": "100644",
       "path": "Dockerfile.release",
-      "sha256": "b7f20cca00b7654e31d7af4e008440a1dcc15e2a389b3dd89cba46cd11ca6c5f",
-      "size": 1964
+      "sha256": "679753eee0cb0fe350ed173406db68aee1150f6842ce2bed968c138b80835c27",
+      "size": 2089
     },
     {
       "mode": "100644",
@@ -100,8 +100,8 @@
     {
       "mode": "100644",
       "path": "README.md",
-      "sha256": "0632acaf493bc62e20a11e9d2f407217db1c48c7e5b2b1debb007e8a9192e56f",
-      "size": 5322
+      "sha256": "363f70b004b0332ac77c836c9bdcb7c1f1cea2fc024dae972c207f1814979ec3",
+      "size": 5369
     },
     {
       "mode": "100644",
@@ -124,8 +124,8 @@
     {
       "mode": "100644",
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "79762e374fddc28e0cb2c711994764e94fde0606626789ef7ca11e5ae5719a0a",
-      "size": 2284
+      "sha256": "2f8582cf852c7b02746d09a3f3943ce3153dd6054b5fcacc8cb941c3dd350334",
+      "size": 2599
     },
     {
       "mode": "100644",
@@ -148,8 +148,8 @@
     {
       "mode": "100644",
       "path": "docs/architecture/trust-boundaries.md",
-      "sha256": "d93fc14bd173c36d1ac0e987e33b8dfdb634d99e48a5f0fd79b38454ecf50a6d",
-      "size": 1856
+      "sha256": "92b9faead412d93976359ccf274b12fa909d33bd84e6222969d2097807c62609",
+      "size": 2152
     },
     {
       "mode": "100644",
@@ -225,6 +225,12 @@
     },
     {
       "mode": "100644",
+      "path": "docs/facts-connectors.md",
+      "sha256": "160209fd60f2768f0a35fffde855fb66c5b0eac89ec5884d6e82d5452824da4b",
+      "size": 7817
+    },
+    {
+      "mode": "100644",
       "path": "docs/index.md",
       "sha256": "71242e5c81332f2aa8f218a60fc6d13bfb06596bf30ed446734a50def17a5408",
       "size": 2686
@@ -250,14 +256,14 @@
     {
       "mode": "100644",
       "path": "docs/protocols/facts-flow.md",
-      "sha256": "b53551c3b9942e75222ae34cb6de9c695832023a1c33727ee3e645e6a8127a3b",
-      "size": 1715
+      "sha256": "41ab6df71254d156ad3f3256da513497d581754579aec7640a5c48656dbd9f98",
+      "size": 2557
     },
     {
       "mode": "100644",
       "path": "docs/protocols/signer-flow.md",
-      "sha256": "7911fd565a79dc40941f6d120dd38f37e6f3d9a65635fd23b06ac9b21e2cfd2d",
-      "size": 1374
+      "sha256": "da5e22f12befac038db9c06ba1a3f74f575c6e6d8f819ce4dea18b722545ed82",
+      "size": 1558
     },
     {
       "mode": "100644",
@@ -268,8 +274,8 @@
     {
       "mode": "100644",
       "path": "docs/reference/configuration.md",
-      "sha256": "4ab070d3fc4af361663dd3136c62c4c9f01af7cb49f05e25bb10fb7ffcc06c81",
-      "size": 3285
+      "sha256": "7135bc35679d67016c940c7a5f80511216ffa6a262dde24a73413cb7a4ea358d",
+      "size": 4385
     },
     {
       "mode": "100644",
@@ -286,8 +292,8 @@
     {
       "mode": "100644",
       "path": "docs/security/threat-model.md",
-      "sha256": "52ac4ea12a0efb93c2feca34f550d7dd40b989fd3c4cf2bd15903988f2b688ae",
-      "size": 2098
+      "sha256": "674847477a6634b20ecd54655b961ec5d3c34404aafb669eb26cf7e8666e5d5a",
+      "size": 2931
     },
     {
       "mode": "100644",
@@ -298,8 +304,8 @@
     {
       "mode": "100644",
       "path": "docs/test-coverage.json",
-      "sha256": "8ea56213365ccc831f1fdd5f401f5b2954eb683a4072bbe50c803d0c64c9ab6f",
-      "size": 22179
+      "sha256": "fa363f720d79f9ec1677105d57671cc0125fa9da25316d1445a7c32adbc3291b",
+      "size": 22549
     },
     {
       "mode": "100644",
@@ -315,9 +321,27 @@
     },
     {
       "mode": "100644",
+      "path": "examples/demo-console-session.json",
+      "sha256": "431b1d52e78da04a00c71d0a50671bc68eb107bbe8e64d85d16e226e9c57101a",
+      "size": 9273
+    },
+    {
+      "mode": "100644",
       "path": "examples/devices.example.json",
       "sha256": "0ecbce6a828e6f34153381aa27b9528236ffe7813bcebbdc9673cb3755f65017",
       "size": 429
+    },
+    {
+      "mode": "100644",
+      "path": "examples/facts-connector.entra-device.json",
+      "sha256": "8ee7584e5d96f46328ff28981ee71c3bc282fd32e6242471fcce4965f52dd647",
+      "size": 1215
+    },
+    {
+      "mode": "100644",
+      "path": "examples/facts-connector.servicenow-cmdb.json",
+      "sha256": "aec80e57d7e0fc2347abde764dd7ffd68834bb9faaf03c84d043ceeedb06a3ce",
+      "size": 1224
     },
     {
       "mode": "100644",
@@ -334,8 +358,8 @@
     {
       "mode": "100644",
       "path": "mkdocs.yml",
-      "sha256": "8fd9d5841a0aa1d7d18382fa631db3ee768f8edba88d37cb644ac5bd2b2c5ad9",
-      "size": 2173
+      "sha256": "1bf9c1d92668b9aa0b62059f33e805bd5d118c5bab107f9a53ecaed37a233845",
+      "size": 2215
     },
     {
       "mode": "100644",
@@ -358,8 +382,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Authentication/BootstrapApprovalRequestReader.cs",
-      "sha256": "8e11b654e7ba9e35cc51fde55e13d14a3b72ad521977323436147ecf1a10f078",
-      "size": 2407
+      "sha256": "60c412542e4817d8c0c6e7c5c4d41e2836cec0f3f73a7b2c8311523aa0b23234",
+      "size": 2449
     },
     {
       "mode": "100644",
@@ -370,14 +394,14 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Authentication/BootstrapKerberosAuthenticationHandler.cs",
-      "sha256": "479e9ed23e69dbd508f378e293939fbf70ba5df8a656d70b22a93ff6da1ee383",
-      "size": 12357
+      "sha256": "8c1eb5de83c9ff7b2f64d57f8806b998186b60f00f1ad0fcaaa3b3a9e29a1b04",
+      "size": 12362
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Authentication/BootstrapTechnicianAuthenticator.cs",
-      "sha256": "350b582fd0fae117112b67959b2791f9342edbfb516dee87bc282f085c968405",
-      "size": 6858
+      "sha256": "859b663f68859a2c4e58bff69a17f222fc3f350d617a4ddee79d1896056ea135",
+      "size": 6857
     },
     {
       "mode": "100644",
@@ -388,8 +412,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Authentication/CertificateHttpTransport.cs",
-      "sha256": "0e688ad1280abf864914fb58e001f9d0947d5e0bde655febabf3516a778312a8",
-      "size": 7621
+      "sha256": "975089649c6a56d9faff82adc464885374d0f66ae732457006e05a845203bdbf",
+      "size": 8168
     },
     {
       "mode": "100644",
@@ -400,8 +424,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Authentication/KerberosHttpTransport.cs",
-      "sha256": "04b08d3d1ce8725ed36eaafae6ee704dbb7afabb848ddda2e0c5c6227b79f92f",
-      "size": 12839
+      "sha256": "6a53c54bdfbee619f85bf90642da61a64cb302f1723ace03472fc94218b907db",
+      "size": 13975
     },
     {
       "mode": "100644",
@@ -430,8 +454,38 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/BrokerConfigurationBoundary.cs",
-      "sha256": "62ce56da630cda48991acf190f2bc63e773f36c6ff2d395f56f235e5d3c71ed7",
-      "size": 2197
+      "sha256": "fe7d567ff93a8adc143be4a064e87d9d8709d77261bff0e04e19858ddf44786d",
+      "size": 2247
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/DemoConsole/DemoConsoleHost.cs",
+      "sha256": "8b1707f3ca2af48bc8bdb387ff882ebdb74dccc826e751302aef0cd4af51aa96",
+      "size": 21522
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/DemoConsole/PresentationSchema.json",
+      "sha256": "6aac88565d7c6950ecea2391f3dba8f4237616b652077ad587af5f00a69d5d65",
+      "size": 3950
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/DemoConsole/Web/console.css",
+      "sha256": "f6174ab0c6247175458efa892bc370997e72f70105869e349b6754c258de4f52",
+      "size": 15831
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/DemoConsole/Web/console.js",
+      "sha256": "a2a2fe965c9a67db0aa3b058b95ec10e2a3dd4fdf3ff843ee3581264c760bae2",
+      "size": 16020
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/DemoConsole/Web/index.html",
+      "sha256": "85bc85561ba6f4238d3e59b14cb8a88ca19a0a0fe64a546557124111602b5af4",
+      "size": 5557
     },
     {
       "mode": "100644",
@@ -454,7 +508,7 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Directory/KerberosComputerIdentity.cs",
-      "sha256": "af245ef6f95c8ba9e44e79552698d1d1f32b835aa15ed7d83b73e3a3f51bfe34",
+      "sha256": "21ae945bc10030b99802852fbdef56e9f41aae8acd7abad45b2b9e14a7717974",
       "size": 3192
     },
     {
@@ -466,14 +520,14 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Directory/LdapComputerDirectory.cs",
-      "sha256": "1da031a40ab44b03af1b5b9bb06f56917cc514cf85656e1f2847a52d9d453e5b",
-      "size": 7848
+      "sha256": "0c6761fac1fb6623791a4c7797db3126ef79fb3c9bcc20a663ff562851f70ff6",
+      "size": 7937
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Directory/LdapUserDirectory.cs",
-      "sha256": "3c9951eff5cef00eec46f519e654b07817d2dd924ec2bcb9494706eb3b88b9fb",
-      "size": 6269
+      "sha256": "d3d2164e728093c4a82d6c720eb88a90367eaafd2a6d2bea1c0fc0bb2f788d25",
+      "size": 6358
     },
     {
       "mode": "100644",
@@ -490,8 +544,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/BootstrapDeployment.cs",
-      "sha256": "9dad85c8f84f210b22adae47525302c59a867de93e438d6cc576362f7ea8d2a4",
-      "size": 13558
+      "sha256": "88344af306d031a874ef604bfd044e1c357b9877ab11068a9c0b26f5a69aaa5d",
+      "size": 13956
     },
     {
       "mode": "100644",
@@ -502,20 +556,20 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/BootstrapEnrollmentIssuanceService.cs",
-      "sha256": "fe71c9d975065781abb5f11629661d01181a72319baa043c1973d732a9228c3a",
-      "size": 7783
+      "sha256": "8d4e4faf9bdaf48a92751ddfbd9fe43a27bd2a25bc840fc0b2785a06f962ca92",
+      "size": 7893
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/BootstrapEnrollmentWorkflow.cs",
-      "sha256": "087ebb902071965dd9212e5f952290cc83d3814a74072aedc6e73660e28a288a",
-      "size": 8827
+      "sha256": "98a26f0aacc57ca5c1369f2562dcb4dd8655098d9376d43df984a22a61b27c93",
+      "size": 8907
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/BootstrapPairingCoordinator.cs",
-      "sha256": "fd30f1146d85f0c3f1a8e3b46957905091113a9934f7d2467c6dcc103f8061bb",
-      "size": 12700
+      "sha256": "84248295afc1a4e513ee54c810d53f93718987703972bfefd175981edeacf9a2",
+      "size": 12870
     },
     {
       "mode": "100644",
@@ -526,8 +580,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/BrokerReadinessCheck.cs",
-      "sha256": "a964ea0284fbe11e9ab3dfe23e10e0127ca0bbe77edfe4daa3761fe3a53eb1c5",
-      "size": 2832
+      "sha256": "c7b97955239fd16588fbd678141b1bafeaa8aecdd1e55cb4a9437b8a5bf1bb0c",
+      "size": 3043
     },
     {
       "mode": "100644",
@@ -550,20 +604,20 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/DeviceFactsCommand.cs",
-      "sha256": "77dab2f3679f9501ec8bcf6e5a74fca56f361dafffbc19b0dea6f59f95a8677a",
-      "size": 3410
+      "sha256": "390b7729fe7e2a6c276e5f0696285506fc4c2626e22c25b5aa695ad4819600a9",
+      "size": 4269
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/DeviceFactsEditor.cs",
-      "sha256": "9a29dd53ada2aaab7d2cf07a58422fcfcf81b24e64b6760eb0d3a90b9d126609",
-      "size": 3683
+      "sha256": "3a681ce23bfda899144168fcc0e6189149609f95f462d74d7f0f0c655aa9842f",
+      "size": 3972
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/DeviceFactsPublisher.cs",
-      "sha256": "3132acb4fa4a04ea08996927299df6ccc20604d47100894883756ab26ec9d71f",
-      "size": 19566
+      "sha256": "3eccb7406a18ed26a934649a4e85193fccadcca3a1cef31ab2c793c46667690f",
+      "size": 31856
     },
     {
       "mode": "100644",
@@ -574,38 +628,50 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/EnrollmentModels.cs",
-      "sha256": "029203e9d452623c0782e96aec1b4ea1160e438b0cc83b5d971661133ef87aca",
-      "size": 1414
+      "sha256": "74315026666a63b4c87c5d9dd7882ddd7a2d1e56323a5fdfd092e24cb03dc50b",
+      "size": 1455
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/EnrollmentSubmissionJournal.cs",
-      "sha256": "638c85d96c52d8ea8aaf78d11818ff605d693879a6733ed88bb16b74c73dcb27",
-      "size": 17877
+      "sha256": "9432e122ef0b34e88b419b63154eb905e9c9d92f8369ed5ee50d8c13a6816ebb",
+      "size": 22800
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/FileBootstrapAttestationStore.cs",
-      "sha256": "1258c193604e44a271ed179acf899b44abc2ea0478487ef0f26996dd6f3d3696",
-      "size": 14089
+      "sha256": "3a1b1ed225e26051ce2141fa53f97b8ff49008dbf00021c7d08c5869f73cc690",
+      "size": 14315
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/FileBootstrapEnrollmentTransactionStore.cs",
-      "sha256": "b2360d1126f7b9f00269f6379d507e733f7352a85f9df3bee20fcfde38ea4904",
-      "size": 43581
+      "sha256": "1c657683ba374c338f691870373125286691cf2f07b9d5dcc2596d23edcd7d3c",
+      "size": 45542
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/FileBootstrapIntakeLedger.cs",
-      "sha256": "c805ba7bad28de0ab372de49669e16114538a1a2423f078c9f11ed16515f0942",
-      "size": 26279
+      "sha256": "405da308e44698af4c9b966371ccc03fb8269f1fa96ba5c344d7c3c8441c29e4",
+      "size": 26342
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/FileBootstrapPairingCoordinator.cs",
-      "sha256": "511b1d398c49891776babcfcebc5e1ebd7f564584d0442938c2c0e1106302913",
-      "size": 32817
+      "sha256": "7475fe1d66529ec59080c75105c79d6439ed4cdb109acaa8270291470bfc00a1",
+      "size": 33376
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/Domain/HttpFactsConnector.cs",
+      "sha256": "b68cc858eb254772ff8aaee8cf0ccd8eae81f089b6ba2c3467b80737b43de05b",
+      "size": 31749
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/Domain/HttpFactsConnectorCommand.cs",
+      "sha256": "b630a43906a6b76d683d8379adb02a9697be134d6ee0b94829a3ff5de5ffb545",
+      "size": 2702
     },
     {
       "mode": "100644",
@@ -622,8 +688,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/JsonFileDeviceFactsSource.cs",
-      "sha256": "780cc26631e4ed470daf6b84495613e0a9c4dfb1bfd2cb24e58f059cb99b67e8",
-      "size": 9761
+      "sha256": "9663de38044b7f074345c07dacffc7d9d73f65a4852b7044e176858bf2de677e",
+      "size": 12137
     },
     {
       "mode": "100644",
@@ -640,8 +706,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/NativeDomainEnrollmentAuthorizer.cs",
-      "sha256": "1136f3ef1de2b8a1061c418c4514ffba7f2221e1fde246fe3fc068bf1b4325c2",
-      "size": 7185
+      "sha256": "213d9968f4f6d6f45a50648db532153774b37b5e61c5b0e94d16984d4880c42c",
+      "size": 7465
     },
     {
       "mode": "100644",
@@ -652,8 +718,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/NativeEnrollmentService.cs",
-      "sha256": "0e4cfdea837efc4afb974de07effaa8002a64b83c29f78f0ba4af34f83c1e089",
-      "size": 12735
+      "sha256": "fa8076075adc4b53f90fb5c6a39a05cdce32dd1cc5725ce85bee00d73117748f",
+      "size": 13227
     },
     {
       "mode": "100644",
@@ -664,8 +730,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Domain/OperationalFactsManagement.cs",
-      "sha256": "badc6ee1f4b302f0f450059ef79eef9c45a34229774d4078b057729f71a5388f",
-      "size": 15643
+      "sha256": "bc28c435db2c65745d218227155ffc552565793009ea6a4a7ad262948574e2a2",
+      "size": 15792
     },
     {
       "mode": "100644",
@@ -676,8 +742,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/FactsWorkbench/FactsWorkbenchHost.cs",
-      "sha256": "f03c405ef5ed8aab448fb4062319c555c4b18ed1487a51b2937f44ecb4c79f67",
-      "size": 9619
+      "sha256": "a4be32e16b814e4fda0d2528f4b417fc0b104b372116737da2bfe817a43595e6",
+      "size": 9963
     },
     {
       "mode": "100644",
@@ -688,20 +754,38 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/FactsWorkbench/Web/index.html",
-      "sha256": "3a452d80995c6177354f9da773faf49ce943ba37612f86b92f3e24cbeeb0c777",
-      "size": 4343
+      "sha256": "2507af2f2a4cab5dfda0cfa8a51eb2a6e93da81ce2023ce5e979723bced57ae4",
+      "size": 4742
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/FactsWorkbench/Web/publication.css",
-      "sha256": "f674659572c062ecd90b0a88d44a8ddc4e77a91dc8c576aaeb27a9479f3bb5ed",
-      "size": 379
+      "sha256": "129f6a8e73fe39bf75eb13eb48603c238cc93b6fcc39a88d3a772c03b2211ad6",
+      "size": 397
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/FactsWorkbench/Web/ui-system-license.md",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "size": 11358
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/FactsWorkbench/Web/ui-system.css",
+      "sha256": "eb17c764ddff8c7d69c995269939b745ef6292ca7ec367651bb906c608d17bee",
+      "size": 4490
+    },
+    {
+      "mode": "100644",
+      "path": "src/PkiProxy.Api/FactsWorkbench/Web/ui-theme.js",
+      "sha256": "34b1a6e4336eb3839b6774bb87c2b8f4ef54893009fb7a44736db804a359b60e",
+      "size": 1988
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/FactsWorkbench/Web/workbench.css",
-      "sha256": "806abe9a35e28032809987511a80489902bc7770d33afa24a71222c78b9576e1",
-      "size": 5859
+      "sha256": "b101d9545183dbef3948be3df46e61aee357effa892625b9db9282d75bd894e5",
+      "size": 3816
     },
     {
       "mode": "100644",
@@ -712,14 +796,14 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/PkiProxy.Api.csproj",
-      "sha256": "59f0bc895bae7bbbabc5ba86a6ea6ae4d8f83994e3fe63d1c2e51a434c960736",
-      "size": 553
+      "sha256": "5351386c9f96d4f8d2af050684bd26740e5d95b2c3d9d5a9a8cd545a1ec4c80d",
+      "size": 826
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Program.cs",
-      "sha256": "de1dbd0eddb087fdfcc49ca819853963f27c3491b7145a4d04cfd741003275cc",
-      "size": 15384
+      "sha256": "cbc19f047c85624f6a658e9b172832ae8dfa327a983e98306789cecdcd06cac7",
+      "size": 16573
     },
     {
       "mode": "100644",
@@ -730,8 +814,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Protocol/Cmc/CmcEnrollmentRequestBuilder.cs",
-      "sha256": "b8f1d719fe333c0999039f2bcca75bbea1e94427485a1b16dcb5750b77370ba5",
-      "size": 18063
+      "sha256": "3172cee1335e4314265f2318026f6faeb242668f4c583b4e3396d52697710ee4",
+      "size": 18069
     },
     {
       "mode": "100644",
@@ -766,14 +850,14 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Protocol/ProtocolEndpoint.cs",
-      "sha256": "6b18d597c9bc7d5f1c61c56d66e16046268da13149b141c5e963b1c5beeb9259",
-      "size": 1030
+      "sha256": "463edd60ff7718d4b97af307541e95b090b77358da0479e48069438598791921",
+      "size": 1003
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Protocol/SoapEnvelopeReader.cs",
-      "sha256": "b0835395da7f11a05c143edccbf16dea64b1ae42d4867abe5d63cb7462c43341",
-      "size": 9130
+      "sha256": "b0d0cc274f6bb6b6c025ec38d3c28daba5e89c32845b1c9e50a00694aa093b35",
+      "size": 10055
     },
     {
       "mode": "100644",
@@ -796,14 +880,14 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Protocol/Wstep/KerberosCesTransport.cs",
-      "sha256": "c72adc43dd3b39caa8b06be58d9df49829aeca6a4a717fb2e4f982b66c858025",
-      "size": 7326
+      "sha256": "4305bdf5a8cb9ae6854f27fb81a2ccb9d640d61cfc58dc03ceb10f21caca06bf",
+      "size": 7362
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Protocol/Wstep/WstepRequestContract.cs",
-      "sha256": "09ec5992000a9f24c53006927b63a6424e4b20753d4ca7c433b4ded76ad5a8c7",
-      "size": 7338
+      "sha256": "ff41b2f97fd94d225b1966699bf3386a44f1d4f06ef6bdd3af94a99eec8677e0",
+      "size": 7392
     },
     {
       "mode": "100644",
@@ -862,8 +946,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Signing/IsolatedSignerHost.cs",
-      "sha256": "dcc66ef5804175e582ec60bf26a8a2fc3af8752a687c68779a54ec3d37c34bb4",
-      "size": 9763
+      "sha256": "129f23cff2955a67a938e6c572fb481a1d330e35ebe769bf4487a777b1b5eaff",
+      "size": 10185
     },
     {
       "mode": "100644",
@@ -874,20 +958,20 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Signing/Pkcs11IsolatedSignerKeyProvider.cs",
-      "sha256": "9ebee09b2166c59dd6643232b885aa474a2f4ba190ea4bb8917b0fccb5c8c2cb",
-      "size": 26809
+      "sha256": "4180ed851fc5f2f2f7d3f13e0a8be16b9e952a7f0171f878fe26c78ec10fe2df",
+      "size": 26709
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Signing/SignerProtocol.cs",
-      "sha256": "e79432b825cdebdc32914a71f36f41dd2f042127df93f71b2c74f5b5d3194d63",
-      "size": 17923
+      "sha256": "80b67c08ae7c05a8365cbfea40a17eda3bc15a27c85eb2606735964e5dc885c4",
+      "size": 18212
     },
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/Signing/SigningIntent.cs",
-      "sha256": "43001be4a0d83a8cb1e0b57ab6b66450c60a862e733d2d95ee6cfabffec44a9e",
-      "size": 16486
+      "sha256": "3960c360321e9392b2c2c82f760caf503103367dfedca07ae20509da4c95885f",
+      "size": 16790
     },
     {
       "mode": "100644",
@@ -898,8 +982,8 @@
     {
       "mode": "100644",
       "path": "src/PkiProxy.Api/packages.lock.json",
-      "sha256": "2f70473833cb0ad7d40359a8581706482c5a715106313827a66620b92422b2da",
-      "size": 620
+      "sha256": "867a804d6f7c461a63bb6be084654bdd850ff18899232662a99d6fd60f05c0a8",
+      "size": 602
     },
     {
       "mode": "100644",
@@ -910,8 +994,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/BootstrapEnrollmentWorkflowTests.cs",
-      "sha256": "ff52cd9d7211b34cc75b0a4e645a205966b1b26d6f85c60d4ab5934daed52e26",
-      "size": 12226
+      "sha256": "cbe51f74f2ced9f896476e4f8c5d7f57df4d30a797a52505d76a6dada2473474",
+      "size": 15924
     },
     {
       "mode": "100644",
@@ -928,20 +1012,20 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/BootstrapIssuanceWorkflowTests.cs",
-      "sha256": "acdccc04c64cc1a8df5870eccbf9fae7d2213e7f486deefefd4003bcabcb9d4d",
-      "size": 15866
+      "sha256": "5fcddf273e488f43075124bc4511f414ae407b4f12e818347ce5bc9a4bfe6e8f",
+      "size": 18940
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/BootstrapKerberosAuthenticationTests.cs",
-      "sha256": "c51243d214505130b958fc2f90462bebb430670d01e8868af7081d57c25e8d5e",
-      "size": 12066
+      "sha256": "3da529ffdcf8db1e205125d0bf88759873f76052f3e4a32e41c76d71915e74d8",
+      "size": 13223
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/BootstrapPairingTests.cs",
-      "sha256": "7f38caadd11111eaf9b210f4b841be7fd739b550546fce5fdef60eae54732f11",
-      "size": 9049
+      "sha256": "e8b94b214903fb79bb899bbac58894eb4b5e18426f62a6fd8f4922af8d7ba4c7",
+      "size": 9102
     },
     {
       "mode": "100644",
@@ -1017,6 +1101,12 @@
     },
     {
       "mode": "100644",
+      "path": "tests/PkiProxy.PublicContractTests/DemoConsoleTests.cs",
+      "sha256": "1c8c703a0a2c5e5ef5bdcbd2b2e4e27200ade34c7b61dc313dfcb9dc3472dc36",
+      "size": 20342
+    },
+    {
+      "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/DeviceFactsEditorTests.cs",
       "sha256": "55f0f0f449e88b1487577dffe1540ca42608f55e510c0a8ef9c396029cb984da",
       "size": 6934
@@ -1024,14 +1114,14 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/DeviceFactsFileTests.cs",
-      "sha256": "fae58583c4214913da7975da7e1a1dd9622eb6a432d798057a958329f68f8133",
-      "size": 11342
+      "sha256": "6185dd3efa10490da3a0a4c77983bfc472a659a13ed9c22376eab41c46afafb3",
+      "size": 14241
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/DeviceFactsPublisherTests.cs",
-      "sha256": "f7974bc1c80143a90e4b3ff33fa2b68575d200c34c4abb0aa5bb595740b85b6e",
-      "size": 10660
+      "sha256": "2504dbbb824716d3e02d5e36f9411a5f9876631be6a4807947fea990bae757bf",
+      "size": 23690
     },
     {
       "mode": "100644",
@@ -1048,8 +1138,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/EnrollmentSubmissionJournalMarkerTests.cs",
-      "sha256": "d64f4d55c58c135be0b841e5c5ba6b8e0c04ea7c71840be9e8fb9a07366bcfd0",
-      "size": 24836
+      "sha256": "7af24b6b916340819447df818f0ba355e53f386dfd6695798263cae3fc53ae72",
+      "size": 33181
     },
     {
       "mode": "100644",
@@ -1060,14 +1150,14 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/FactsWorkbenchPublicationTests.cs",
-      "sha256": "dde37a68bf74365eecb1fe0e5679c3ad534dfbc17032f90ec27d74241697a67e",
-      "size": 7017
+      "sha256": "05de61c6e8537746baef3d67179530e6b02ed61dc2a2552ed84b27836d907b1f",
+      "size": 7267
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/FileBootstrapEnrollmentTransactionStoreTests.cs",
-      "sha256": "9218292f067e9303915c0671070390b3e5c4d5b0033d626a20f3ac2096aa134d",
-      "size": 34403
+      "sha256": "8cb29d9b87b104902d032cc728ecd42744b9e6052f6f897bb166e2c416ff7c6a",
+      "size": 35531
     },
     {
       "mode": "100644",
@@ -1078,20 +1168,26 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/FileBootstrapPairingTests.cs",
-      "sha256": "6211dbb618ba616afa7356a4d365091bbf59c9d7b3db820ed650bb22deb8a140",
-      "size": 33404
+      "sha256": "eae320d37a118928dfae26e9553f052bddcb40a7677b4651c2faf9702e898852",
+      "size": 33925
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/FileBootstrapStoreTests.cs",
-      "sha256": "18e79b7f605ae41e584142a96d0d138a844b90bc7fed0c8dc17a9c21ec5f0e0c",
-      "size": 24046
+      "sha256": "1ea15b3862d9b85e4f9c67cc940dea35004dc648d63b6e62fb17b3f5aabc36f3",
+      "size": 24104
+    },
+    {
+      "mode": "100644",
+      "path": "tests/PkiProxy.PublicContractTests/HttpFactsConnectorTests.cs",
+      "sha256": "d702a59f8dbd47c74c0924dca340bdf22b4559868fbc3d536a491acdb0f186e3",
+      "size": 26456
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/InboundSoapLimitsTests.cs",
-      "sha256": "09a7e341ee98b00c0a4482178e664f103fbc0895c15e978e778f8dd8d74ed216",
-      "size": 9207
+      "sha256": "c8bd3a4829df0f22b359f5889b89c3339046f258aa194656f3e1dbe44f2b1076",
+      "size": 11834
     },
     {
       "mode": "100644",
@@ -1108,20 +1204,20 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/IsolatedSignerProtocolTests.cs",
-      "sha256": "9eec92978c990d9a10cc058b7ab6db21436f4c74b3590de12e0c2dc652a667aa",
-      "size": 24463
+      "sha256": "2ebd59aaaa2993114bf2d8a12eb9f98bc9abd7cc01d6008ffaab80ed5d998c8b",
+      "size": 26281
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/IssuedCertificateValidationTests.cs",
-      "sha256": "c9e40cf16a297db3c8ac11da0d3e0315d5a97a9d77cf4c38043a20f6e271d44b",
-      "size": 10546
+      "sha256": "67e4d4471e35c4ebe4fd073f6c31039af18ea8f63f0080501ace466fe08aed7a",
+      "size": 11333
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/KerberosHttpTests.cs",
-      "sha256": "099ae4b0cc769b33b72c364a59cf9fd7c7ac0354a9c13e674110f39561586ab5",
-      "size": 19396
+      "sha256": "016ca6096cbcb8a065813f2c8f485e6f5956c08a17a61a617a2716c30313a068",
+      "size": 23012
     },
     {
       "mode": "100644",
@@ -1132,14 +1228,14 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/NativeDomainEnrollmentTests.cs",
-      "sha256": "cd2117e05e918b3330be2d4ef5379f8577cf68fe9ec78ca7d6d3389f2fb8c774",
-      "size": 24957
+      "sha256": "7f27a1a0a564a683db58b29025a72b1787b5c3c70e53b156e389724fa2d14b55",
+      "size": 25500
     },
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/NativeDomainRenewalTests.cs",
-      "sha256": "65afd48dd34b719662b4a661869c9520108fe7f0bbf7525f13d3d982c13f70db",
-      "size": 30290
+      "sha256": "d6af4d1a8a166022c7120370187c2ac31b880f1c81f5117d47d377eda1829cf9",
+      "size": 30502
     },
     {
       "mode": "100644",
@@ -1174,8 +1270,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/Program.cs",
-      "sha256": "a971b32d33b4286d5777f559dcd80f59c9ceb718defe5f4722b6941ced5e70b3",
-      "size": 26847
+      "sha256": "8deb679a460b7ee58cd060eaaa373941c128db93c67f153bfae50306fda016fe",
+      "size": 27037
     },
     {
       "mode": "100644",
@@ -1204,8 +1300,8 @@
     {
       "mode": "100644",
       "path": "tests/PkiProxy.PublicContractTests/packages.lock.json",
-      "sha256": "c464731793cc7a5a652c3ff3ce4c85f0bad3779d681f6daed61fb968beca1cf8",
-      "size": 781
+      "sha256": "63e7b5ada9dd47df891d5c0c4308eb36e40ad4958fdbe70502548eec03c49f77",
+      "size": 758
     },
     {
       "mode": "100755",
@@ -1228,8 +1324,8 @@
     {
       "mode": "100755",
       "path": "tools/check-runtime-image-scan.py",
-      "sha256": "058fbc60abba64721c73ca5f2ffdad29bca965552a8ab508601e2718ab7f4e97",
-      "size": 8068
+      "sha256": "2f96623980bd1b7dd26c03b59c9ed0cc02fcc05c4e7b67cec57650cfea31b832",
+      "size": 15198
     },
     {
       "mode": "100755",
@@ -1264,8 +1360,8 @@
     {
       "mode": "100644",
       "path": "tools/test-dockerhub-workflow.py",
-      "sha256": "9756bd33e768416273afe94e1c9cd637dbddc6832504f91007dd8368dfb0bc77",
-      "size": 2984
+      "sha256": "ee1713b2abe57c507f07230e8b06ce49d7dc80344532a71972c16bdd2eb1591d",
+      "size": 3805
     },
     {
       "mode": "100755",
@@ -1276,8 +1372,8 @@
     {
       "mode": "100755",
       "path": "tools/test-runtime-image-scan.py",
-      "sha256": "6030c79206db0ed1f331fcf1e786490187ba2fb9b8b0b482871e4f0b6f531ed1",
-      "size": 4307
+      "sha256": "0b9362bd48ea22b7e86f69ac78297a79d336af20c60ef80d3be01bc7debd9cbe",
+      "size": 8930
     },
     {
       "mode": "100755",
@@ -1306,5 +1402,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "7b6575a5af8b687c96cd5bc10b69501527088eb5f02eac64198e97c1155af1af"
+  "treeSha256": "c14873140342f699727dafc4a52d84151153851e830286dfcba3a794214021d1"
 }

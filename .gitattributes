@@ -4,3 +4,7 @@ smoke/*.sh text eol=lf
 tools/*.sh text eol=lf
 LICENSE text eol=lf
 NOTICE text eol=lf
+src/PkiProxy.Api/FactsWorkbench/Web/ui-system.css text eol=lf
+src/PkiProxy.Api/FactsWorkbench/Web/ui-theme.js text eol=lf
+src/PkiProxy.Api/FactsWorkbench/Web/ui-system-license.md text eol=lf
+src/PkiProxy.Api/FactsWorkbench/Web/ui-system.lock.json text eol=lf

@@ -183,7 +183,7 @@ internal static class LinuxSecretFile
         try
         {
             handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            if (fstat(handle.DangerousGetHandle().ToInt32(), out metadata) != 0 ||
+            if (fstat(handle, out metadata) != 0 ||
                 (metadata.Mode & FileTypeMask) != RegularFile ||
                 (metadata.Mode & PermissionMask) != OwnerReadWrite || metadata.Uid != geteuid())
                 throw new InvalidOperationException(failure);
@@ -226,8 +226,10 @@ internal static class LinuxSecretFile
         internal long Reserved2;
     }
 
+    // The Linux descriptor is carried in the low int bits of the handle.
+    // SafeHandle marshalling keeps it open until the native call returns.
     [DllImport("libc", SetLastError = true)]
-    private static extern int fstat(int descriptor, out LinuxStat metadata);
+    private static extern int fstat(SafeFileHandle descriptor, out LinuxStat metadata);
 
     [DllImport("libc")]
     private static extern uint geteuid();
@@ -339,10 +341,19 @@ internal sealed class UnixSocketRsa : RSA
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            if (!ReferenceEquals(owner.intent.Value, value)) throw new InvalidOperationException("Signing intent scope mismatch.");
-            owner.intent.Value = null;
-            CryptographicOperations.ZeroMemory(value.CorrelationId); CryptographicOperations.ZeroMemory(value.CertificateSha256);
-            CryptographicOperations.ZeroMemory(value.Payload); CryptographicOperations.ZeroMemory(value.Digest);
+            try
+            {
+                if (!ReferenceEquals(owner.intent.Value, value))
+                    throw new InvalidOperationException("Signing intent scope mismatch.");
+                owner.intent.Value = null;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(value.CorrelationId);
+                CryptographicOperations.ZeroMemory(value.CertificateSha256);
+                CryptographicOperations.ZeroMemory(value.Payload);
+                CryptographicOperations.ZeroMemory(value.Digest);
+            }
         }
     }
 }

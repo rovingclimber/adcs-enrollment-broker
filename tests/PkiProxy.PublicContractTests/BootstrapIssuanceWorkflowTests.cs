@@ -1,6 +1,7 @@
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json.Nodes;
 using PkiProxy.Domain;
 using PkiProxy.Protocol.Cmc;
 
@@ -47,8 +48,9 @@ internal static class BootstrapIssuanceWorkflowTests
         var verifier = new OpenSslCertificateVerifier(ca, crl);
         var claims = new CertificateClaimPolicy("urn:test:bootstrap-profile", "urn:test:device:");
         var template = new CmcTemplate("1.3.6.1.4.1.311.99999.45", 7, 2, signerEku);
+        const string hostname = "bootstrap44.test.example";
         var facts = new AuthoritativeDeviceFacts("asset-44", "", "workstation", "development",
-            "office", "test.example", 9, "bootstrap44.test.example");
+            "office", "test.example", 9, hostname);
 
         var directory = Directory.CreateTempSubdirectory("bootstrap-issuance-");
         File.SetUnixFileMode(directory.FullName,
@@ -83,11 +85,13 @@ internal static class BootstrapIssuanceWorkflowTests
                 "unapproved transaction cannot submit");
             Check((await service.QueryAsync("123456", now.AddMinutes(1), default)).Result == BootstrapIssuanceResult.Rejected && sends == 0,
                 "six-digit display aid is not release authority");
-            Check(store.BindAsset(id, binding, facts.AssetId, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
+            Check(store.BindAsset(id, binding, facts.AssetId, hostname, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
                 "approved asset bound");
+            source.Value = facts with { AuthoritativeDnsHostName = hostname.ToUpperInvariant() };
             var issued = await service.QueryAsync(id, now.AddMinutes(2), default);
             Check(issued.Result == BootstrapIssuanceResult.Issued && issued.Response?.RequestId == "44" && sends == 1,
-                "AssetBound transaction submits exactly once and releases validated response");
+                "case-equivalent live DNS allows one submission using the approved hostname");
+            source.Value = facts;
             foreach (var suffix in new[] { ".certificate.der", ".full-response.der", ".release.json", ".terminal.json" })
                 Check(File.GetUnixFileMode(Path.Combine(directory.FullName, "bootstrap-" + id + suffix)) ==
                     (UnixFileMode.UserRead | UnixFileMode.UserWrite),
@@ -103,19 +107,27 @@ internal static class BootstrapIssuanceWorkflowTests
                 replay.Response.FullPkiResponseDer.SequenceEqual(issued.Response.FullPkiResponseDer),
                 "restart replays exact durable public response without CA call");
 
+            ConvertToLegacyBinding(directory.FullName, id, "asset");
+            ConvertToLegacyBinding(directory.FullName, id, "claimed");
+            var legacyReplay = await restarted.QueryAsync(id, now.AddMinutes(4), default);
+            Check(legacyReplay is { Result: BootstrapIssuanceResult.Issued, Response: not null } &&
+                legacyReplay.Response.CertificateDer.SequenceEqual(issued.Response!.CertificateDer) && replayCalls == 0,
+                "historical response with legacy asset and claim markers still replays");
+
             var uncertainId = new string('B', 32);
             using var uncertainKey = RSA.Create(2048);
             var uncertainCsr = new CertificateRequest("CN=uncertain-client", uncertainKey,
                 HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1).CreateSigningRequest();
             var uncertainBinding = CsrBinding.FromDer(uncertainCsr);
             Check(store.Retain(uncertainCsr, uncertainBinding, now, TimeSpan.FromMinutes(20), uncertainId).Result == BootstrapTransactionResult.Retained &&
-                store.BindAsset(uncertainId, uncertainBinding, facts.AssetId, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
+                store.BindAsset(uncertainId, uncertainBinding, facts.AssetId, hostname, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
                 "uncertain fixture approved");
             var uncertainSends = 0;
+            FileBootstrapEnrollmentTransactionStore.SubmissionClaim? uncertainClaim = null;
             var uncertain = new BootstrapEnrollmentIssuanceService(store, source, claims, template,
                 (_, begin, _) =>
                 {
-                    if (begin(now.AddMinutes(2)) is null) throw new InvalidOperationException("claim refused");
+                    uncertainClaim = begin(now.AddMinutes(2)) ?? throw new InvalidOperationException("claim refused");
                     uncertainSends++;
                     throw new HttpRequestException("synthetic post-claim uncertainty");
                 });
@@ -127,6 +139,15 @@ internal static class BootstrapIssuanceWorkflowTests
                 (_, _, _) => { noRetryCalls++; throw new InvalidOperationException(); });
             Check((await afterCrash.QueryAsync(uncertainId, now.AddMinutes(3), default)).Result == BootstrapIssuanceResult.Uncertain &&
                 noRetryCalls == 0, "restart refuses automatic resend of uncertain submission");
+            uncertainClaim!.RecordPending(46, now.AddMinutes(3));
+            ConvertToLegacyBinding(directory.FullName, uncertainId, "asset");
+            ConvertToLegacyBinding(directory.FullName, uncertainId, "claimed");
+            var historicalPending = new FileBootstrapEnrollmentTransactionStore(directory.FullName)
+                .Lookup(uncertainId, uncertainBinding, facts.AssetId, now.AddMinutes(3));
+            Check(historicalPending is { State: BootstrapTransactionState.Pending, IssuerRequestId: 46,
+                    PendingCompletion: not null } &&
+                historicalPending.PendingCompletion.ExportValidatedCsr().SequenceEqual(uncertainCsr),
+                "legacy pending submission retains its exact reconciliation handle");
 
             var concurrentId = new string('D', 32);
             using var concurrentKey = RSA.Create(2048);
@@ -134,7 +155,7 @@ internal static class BootstrapIssuanceWorkflowTests
                 HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1).CreateSigningRequest();
             var concurrentBinding = CsrBinding.FromDer(concurrentCsr);
             Check(store.Retain(concurrentCsr, concurrentBinding, now, TimeSpan.FromMinutes(20), concurrentId).Result == BootstrapTransactionResult.Retained &&
-                store.BindAsset(concurrentId, concurrentBinding, facts.AssetId, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
+                store.BindAsset(concurrentId, concurrentBinding, facts.AssetId, hostname, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
                 "concurrent fixture approved");
             var claimed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -164,12 +185,25 @@ internal static class BootstrapIssuanceWorkflowTests
                 HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1).CreateSigningRequest();
             var mismatchBinding = CsrBinding.FromDer(mismatchCsr);
             Check(store.Retain(mismatchCsr, mismatchBinding, now, TimeSpan.FromMinutes(20), mismatchId).Result == BootstrapTransactionResult.Retained &&
-                store.BindAsset(mismatchId, mismatchBinding, facts.AssetId, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
+                store.BindAsset(mismatchId, mismatchBinding, facts.AssetId, hostname, now.AddMinutes(1)) == BootstrapTransactionResult.AssetBound,
                 "facts mismatch fixture approved");
             source.Value = facts with { AssetId = "different-asset" };
             Check((await service.QueryAsync(mismatchId, now.AddMinutes(2), default)).Result == BootstrapIssuanceResult.Rejected &&
                 store.PrepareSubmission(mismatchId, now.AddMinutes(2)).State == BootstrapTransactionState.AssetBound,
                 "changed authoritative asset fails before claim");
+
+            source.Value = facts with { AuthoritativeDnsHostName = "renamed.test.example" };
+            Check((await restarted.QueryAsync(mismatchId, now.AddMinutes(2), default)).Result == BootstrapIssuanceResult.Rejected &&
+                replayCalls == 0 && store.PrepareSubmission(mismatchId, now.AddMinutes(2)) is
+                    { State: BootstrapTransactionState.AssetBound, ApprovedDnsHostName: hostname },
+                "renaming the same asset after approval blocks signing and claiming across restart");
+
+            ConvertToLegacyBinding(directory.FullName, mismatchId, "asset");
+            source.Value = facts;
+            Check((await restarted.QueryAsync(mismatchId, now.AddMinutes(2), default)).Result == BootstrapIssuanceResult.Rejected &&
+                replayCalls == 0 && store.PrepareSubmission(mismatchId, now.AddMinutes(2)) is
+                    { State: BootstrapTransactionState.AssetBound, ApprovedDnsHostName: null },
+                "legacy unsubmitted binding stays durable without signing authority");
 
             var corruptPath = Path.Combine(directory.FullName, "bootstrap-" + id + ".certificate.der");
             File.WriteAllBytes(corruptPath, [1, 2, 3]);
@@ -188,6 +222,15 @@ internal static class BootstrapIssuanceWorkflowTests
             directory.Delete();
         }
         Console.WriteLine($"Bootstrap issuance/release workflow checks passed ({checks}).");
+    }
+
+    private static void ConvertToLegacyBinding(string directory, string id, string stage)
+    {
+        var path = Path.Combine(directory, $"bootstrap-{id}.{stage}.json");
+        var marker = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        marker["Version"] = 1;
+        marker.Remove("ApprovedDnsHostName");
+        File.WriteAllText(path, marker.ToJsonString());
     }
 
     private static X509Certificate2 Issue(X509Certificate2 ca, RSA key,

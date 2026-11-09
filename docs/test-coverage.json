@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "summary": {
-    "included": 48,
+    "included": 49,
     "excluded": 21
   },
   "preservedCoverage": [
@@ -430,6 +430,12 @@
       "classification": "included-safe",
       "publicPath": "tests/PkiProxy.PublicContractTests/XcepProfileTests.cs",
       "reason": "Synthetic self-contained contract with no private estate dependency."
+    },
+    {
+      "path": "tests/PkiProxy.ContractTests/HttpFactsConnectorTests.cs",
+      "classification": "included-safe",
+      "publicPath": "tests/PkiProxy.PublicContractTests/HttpFactsConnectorTests.cs",
+      "reason": "Synthetic bounded-HTTP contracts use an in-memory handler and documentation-only identities; no live provider or private estate dependency."
     }
   ]
 }
