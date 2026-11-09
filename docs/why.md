@@ -127,32 +127,43 @@ get to invent its subject, SAN claims, template, or issuer. Deployment policy
 controls the exact subject and SAN encoding. The broker validates the returned
 certificate before releasing it.
 
-<div class="asset-grid">
-  <figure class="asset-card">
-    <img src="assets/images/cmdb-source-of-truth-isometric.png"
-         alt="Isometric governed CMDB and verified database" loading="lazy">
-    <figcaption>Source of truth supplies governed facts</figcaption>
-  </figure>
-  <figure class="asset-card">
-    <img src="assets/images/endpoint-pc-isometric.png"
-         alt="Isometric desktop endpoint" loading="lazy">
-    <figcaption>Endpoint retains its private key</figcaption>
-  </figure>
-  <figure class="asset-card">
-    <img src="assets/images/broker-ca-server-isometric.png"
-         alt="Isometric broker and certificate authority servers" loading="lazy">
-    <figcaption>Broker governs claims; AD CS issues</figcaption>
-  </figure>
-  <figure class="asset-card">
-    <img src="assets/images/wireless-access-point-isometric.png"
-         alt="Isometric enterprise wireless access point" loading="lazy">
-    <figcaption>Access point carries the EAP-TLS exchange</figcaption>
-  </figure>
-  <figure class="asset-card">
-    <img src="assets/images/network-switch-isometric.png"
-         alt="Isometric managed network switch" loading="lazy">
-    <figcaption>Access network enforces the RADIUS result</figcaption>
-  </figure>
+<div class="asset-grid" markdown="1">
+
+<figure class="asset-card" markdown="span">
+
+![Isometric governed CMDB and verified database](assets/images/cmdb-source-of-truth-isometric.png){ loading="lazy" }
+
+<figcaption>Source of truth supplies governed facts</figcaption>
+</figure>
+
+<figure class="asset-card" markdown="span">
+
+![Isometric desktop endpoint](assets/images/endpoint-pc-isometric.png){ loading="lazy" }
+
+<figcaption>Endpoint retains its private key</figcaption>
+</figure>
+
+<figure class="asset-card" markdown="span">
+
+![Isometric broker and certificate authority servers](assets/images/broker-ca-server-isometric.png){ loading="lazy" }
+
+<figcaption>Broker governs claims; AD CS issues</figcaption>
+</figure>
+
+<figure class="asset-card" markdown="span">
+
+![Isometric enterprise wireless access point](assets/images/wireless-access-point-isometric.png){ loading="lazy" }
+
+<figcaption>Access point carries the EAP-TLS exchange</figcaption>
+</figure>
+
+<figure class="asset-card" markdown="span">
+
+![Isometric managed network switch](assets/images/network-switch-isometric.png){ loading="lazy" }
+
+<figcaption>Access network enforces the RADIUS result</figcaption>
+</figure>
+
 </div>
 
 ```mermaid
