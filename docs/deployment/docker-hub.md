@@ -42,9 +42,17 @@ contains no deployment secrets or lab configuration.
 
 A stable published semantic-version release such as `v1.2.3` produces
 full-version, major/minor, commit, and `latest` tags. Prereleases and
-non-semantic tags fail before registry login. The release tag must resolve to a
-commit reachable from protected `main`. Treat tags as discovery aids and deploy
-by digest.
+non-semantic tags fail before registry login. The release tag must resolve to
+the current protected `main` commit.
+
+Before creating the version tag, wait for **Release readiness** to pass on
+that exact commit. It runs after CodeQL and requires a successful analysis of
+the current commit and zero open code scanning alerts. Run **Release
+readiness** from `main` again after resolving findings if the previous check
+failed. The container workflow repeats the check before building and again
+before registry login.
+
+Treat tags as discovery aids and deploy by digest.
 
 Verify the GitHub provenance attestation with the GitHub CLI:
 

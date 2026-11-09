@@ -1,5 +1,5 @@
 {
-  "fileCount": 233,
+  "fileCount": 236,
   "files": [
     {
       "mode": "100644",
@@ -28,8 +28,14 @@
     {
       "mode": "100644",
       "path": ".github/workflows/container.yml",
-      "sha256": "afec073a49fe292fb24545732a53ef57079e30a40716a1119d0bd09ed358d50c",
-      "size": 6855
+      "sha256": "334c537c9512810b330ee339863428093b35de08e488009b77a9efd59ce7314b",
+      "size": 7192
+    },
+    {
+      "mode": "100644",
+      "path": ".github/workflows/release-readiness.yml",
+      "sha256": "feaf152b10e8877115de54eab0776056eca76c8b5e5d33f58ff1f198a0235cff",
+      "size": 1040
     },
     {
       "mode": "100644",
@@ -40,8 +46,8 @@
     {
       "mode": "100644",
       "path": ".gitlab-ci.yml",
-      "sha256": "ae938e9bbe805960dfefd092eff96aea0a2acebcdace62ce0003a437be246e9e",
-      "size": 10038
+      "sha256": "6f6730c1f9fb6cefeaa059eaf5584ea6a5b96c7c3c9e606b91a03816610447e7",
+      "size": 10081
     },
     {
       "mode": "100644",
@@ -106,8 +112,8 @@
     {
       "mode": "100644",
       "path": "RELEASE_CHECKLIST.md",
-      "sha256": "d7744418747378ee2e86ed58690753c83c5250babbf028f3976debf8baf78dc5",
-      "size": 4094
+      "sha256": "597ccba648346f99c92783fbf65c0636fcd3b92d44823d60823feb615c46c730",
+      "size": 4273
     },
     {
       "mode": "100644",
@@ -208,8 +214,8 @@
     {
       "mode": "100644",
       "path": "docs/deployment/docker-hub.md",
-      "sha256": "6de906e6ebdcb079c24e3b9d570d7db63d8490c759477aa6a2dbacad87684330",
-      "size": 2217
+      "sha256": "11712d43b5a73d50a757848d4565a3fb4c722a42871f6bd2f055337ef97ebabc",
+      "size": 2611
     },
     {
       "mode": "100644",
@@ -286,8 +292,8 @@
     {
       "mode": "100644",
       "path": "docs/security/release-governance.md",
-      "sha256": "c3c3b7de509f5b2dd38e0aede25a2594855489336032d940b590c2005a842a3a",
-      "size": 2894
+      "sha256": "014f2bd171455415a2686396a814694b5028ec674767380f57616f36e0430a50",
+      "size": 3178
     },
     {
       "mode": "100644",
@@ -1310,6 +1316,12 @@
       "size": 3017
     },
     {
+      "mode": "100644",
+      "path": "tools/check-codeql-release.py",
+      "sha256": "e7baa7830eb09d0349451ca0d5ef3fec0585ad42c936e3bd9fe0a9e1374f21bf",
+      "size": 7691
+    },
+    {
       "mode": "100755",
       "path": "tools/check-doc-links.py",
       "sha256": "4485d432ad62c1b4135c96f786c8e5cec15622f898e523e1d2b53d7099c412ed",
@@ -1347,6 +1359,12 @@
     },
     {
       "mode": "100644",
+      "path": "tools/test-codeql-release.py",
+      "sha256": "9ac13c16fd6d0ce4551d148a227bcd5d44f00f6e3ea2238000ffa7d278021dff",
+      "size": 7865
+    },
+    {
+      "mode": "100644",
       "path": "tools/test-codeql-workflow.py",
       "sha256": "b99f3791eacb27ffe2cde3c933f9857d271fa8fdf4e2ec59235c22bd8052831a",
       "size": 1538
@@ -1360,8 +1378,8 @@
     {
       "mode": "100644",
       "path": "tools/test-dockerhub-workflow.py",
-      "sha256": "ee1713b2abe57c507f07230e8b06ce49d7dc80344532a71972c16bdd2eb1591d",
-      "size": 3805
+      "sha256": "5978c7dd11869f83473ec3e0a47a45a1b2ae8bb6d9fdd3accf38d6d25ccaedea",
+      "size": 5057
     },
     {
       "mode": "100755",
@@ -1402,5 +1420,5 @@
   ],
   "schemaVersion": 2,
   "sourceHistoryIncluded": false,
-  "treeSha256": "c14873140342f699727dafc4a52d84151153851e830286dfcba3a794214021d1"
+  "treeSha256": "419742aa93e3895719594cda906271900de7c571fc1bfc7fbff1a9db4fa51f10"
 }
