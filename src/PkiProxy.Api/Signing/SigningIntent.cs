@@ -327,7 +327,15 @@ internal sealed class SigningReplayWindow
             }
             File.Move(temporary, stateFile, overwrite: true);
         }
-        finally { try { File.Delete(temporary); } catch { } }
+        finally
+        {
+            try { File.Delete(temporary); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                // A leftover staging file grants no replay authority. Keep the
+                // original publication failure if the staging cleanup also fails.
+            }
+        }
     }
 
     private static byte[] Fingerprint(SigningIntentRequest request)

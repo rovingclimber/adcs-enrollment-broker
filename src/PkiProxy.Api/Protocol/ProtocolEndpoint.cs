@@ -21,16 +21,13 @@ internal sealed record ProtocolEndpoint(string Protocol, string Authentication)
             return false;
         }
 
-        var protocol = path.StartsWithSegments("/cep", StringComparison.OrdinalIgnoreCase)
-            ? "MS-XCEP"
-            : path.StartsWithSegments("/ces", StringComparison.OrdinalIgnoreCase)
-                ? "MS-WSTEP"
-                : null;
-
-        if (protocol is null)
-        {
+        string protocol;
+        if (path.StartsWithSegments("/cep", StringComparison.OrdinalIgnoreCase))
+            protocol = "MS-XCEP";
+        else if (path.StartsWithSegments("/ces", StringComparison.OrdinalIgnoreCase))
+            protocol = "MS-WSTEP";
+        else
             return false;
-        }
 
         endpoint = new ProtocolEndpoint(protocol, authentication.ToLowerInvariant());
         return true;

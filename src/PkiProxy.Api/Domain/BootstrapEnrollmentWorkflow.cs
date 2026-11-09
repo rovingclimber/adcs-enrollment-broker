@@ -138,7 +138,8 @@ internal sealed class BootstrapEnrollmentWorkflow
         if (!binding.HasExpectedLengths())
             return new(BootstrapWorkflowResult.PairingRejected, BootstrapPairingResult.InvalidState);
 
-        var bound = transactions.BindAsset(transactionId, binding, authoritativeAssetId, now);
+        var bound = transactions.BindAsset(transactionId, binding,
+            audit.AuthoritativeAssetId, audit.ApprovedDnsHostName, now);
         if (bound is BootstrapTransactionResult.AssetBound or BootstrapTransactionResult.AlreadyBound)
         {
             intake.MarkTrusted(transactionId, now);
@@ -157,7 +158,7 @@ internal sealed class BootstrapEnrollmentWorkflow
         if (pairing is { Result: BootstrapPairingResult.Approved, Audit: not null })
         {
             return transactions.HasDurableAssetBinding(reservation.TransactionId, binding,
-                pairing.Audit.AuthoritativeAssetId)
+                pairing.Audit.AuthoritativeAssetId, pairing.Audit.ApprovedDnsHostName)
                 ? FileBootstrapIntakeLedger.RecoveryDisposition.Trusted
                 : FileBootstrapIntakeLedger.RecoveryDisposition.RetainActive;
         }

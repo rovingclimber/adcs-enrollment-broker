@@ -54,7 +54,7 @@ internal sealed class CertificateHttpTransport : IDisposable
             // Require a new client-certificate handshake on every connection.
             // Avoid ambiguous Linux TLS1.3 resumed peer identity until separately
             // proven; existing HTTP connections still reauthorize every request.
-            options.OnAuthenticate = (_, ssl) => { ssl.AllowTlsResume = false; ssl.AllowRenegotiation = false; };
+            options.OnAuthenticate = (_, ssl) => ConfigureTlsAuthentication(ssl, root);
             // Replace ambient trust with the existing explicit lab-root/CRL
             // verifier. No unconditional acceptance or certificate URL fetches.
             options.ClientCertificateValidation = (certificate, _, _) => {
@@ -75,6 +75,17 @@ internal sealed class CertificateHttpTransport : IDisposable
             try { await next(connection); }
             finally { connection.Features.Set<ConnectionBinding>(null); }
         });
+    }
+
+    internal static void ConfigureTlsAuthentication(SslServerAuthenticationOptions ssl, X509Certificate2 trustedRoot)
+    {
+        ssl.AllowTlsResume = false;
+        ssl.AllowRenegotiation = false;
+        // SslStream builds this chain before the mandatory OpenSSL callback.
+        // Keep that preliminary check offline even for an untrusted client leaf.
+        var chainPolicy = new X509ChainPolicy();
+        IssuedCertificateValidator.ConfigureOfflineChainPolicy(chainPolicy, trustedRoot, DateTime.UtcNow);
+        ssl.CertificateChainPolicy = chainPolicy;
     }
 
     private sealed record ConnectionBinding(CertificateHttpTransport Owner, string Id, SslStream Stream);

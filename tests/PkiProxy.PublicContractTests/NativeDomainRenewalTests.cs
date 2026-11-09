@@ -71,7 +71,11 @@ internal static class NativeDomainRenewalTests
                 X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment);
             var claims = new CertificateClaimPolicy("urn:example:broker-profile", "urn:example:facts:");
             var computer = new AuthenticatedDirectoryComputer(Guid.NewGuid().ToString(), "CN=current-ad-name", "current.example.test");
-            var source = new FactsSource { Facts = new("asset-1", "CN=ignored-sot-dn", "workstation", "engineering", "office", "example.test", 1) };
+            var source = new FactsSource
+            {
+                Facts = new("asset-1", "CN=ignored-sot-dn", "workstation", "engineering", "office", "example.test", 1,
+                    computer.DnsHostName) { DirectoryObjectId = Guid.Parse(computer.ObjectId) }
+            };
             var journal = new EnrollmentSubmissionJournal(journalPath);
             var downstreamTemplate = new CmcTemplate("1.2.3.4", 1, 0, "1.2.3.5");
             var authorizer = new NativeDomainRenewalAuthorizer(source, claims, policy, root, crlPath, journal, downstreamTemplate);
@@ -84,6 +88,7 @@ internal static class NativeDomainRenewalTests
             var initial = new NativeDomainEnrollmentAuthorizer(source, claims, policy, new("1.2.3.4", 1, 0, "1.2.3.5"));
             var enrollment = (await initial.AuthorizeAsync(computer, IncomingCmcRequestTests.CreateDomainFixture(oldKey), default)).Enrollment!;
             journal.TryBegin(enrollment, now)!.RecordValidatedResponse("1", old.GetCertHashString(HashAlgorithmName.SHA256), now);
+            source.Facts = source.Facts! with { DirectoryObjectId = null };
             const string mtlsGroup = "S-1-5-21-1-2-3-1106";
             var mtlsDirectory = new CertificateDirectory { Record = new(Guid.Parse(computer.ObjectId), "CURRENT$",
                 computer.DistinguishedName, computer.DnsHostName, 4096, 805306369,

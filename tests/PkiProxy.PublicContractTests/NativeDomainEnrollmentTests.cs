@@ -18,11 +18,13 @@ internal static class NativeDomainEnrollmentTests
         var claims = new CertificateClaimPolicy(profile, "urn:example:device:");
         const string signerEku = "1.3.6.1.4.1.55555.670.1";
         var template = new CmcTemplate("1.3.6.1.4.1.55555.670.2", 2, 0, signerEku);
-        var computer = new AuthenticatedDirectoryComputer("ad-object-123",
+        var directoryId = Guid.NewGuid();
+        var computer = new AuthenticatedDirectoryComputer(directoryId.ToString("D"),
             "CN=AD-COMPUTER,OU=Computers,DC=test,DC=corp", "ad-computer.example.test");
         // A SOT DN must have no influence over a domain computer certificate.
         var facts = new AuthoritativeDeviceFacts("asset/123", "CN=SOT-MUST-NOT-SELECT-SUBJECT",
-            "workstation", "development", "office", "example.test", 17);
+            "workstation", "development", "office", "example.test", 17, computer.DnsHostName)
+            { DirectoryObjectId = directoryId };
         var source = new FactsSource { Facts = facts };
         var authorizer = new NativeDomainEnrollmentAuthorizer(source, claims, policy, template);
         using var key = RSA.Create(2048);
@@ -32,7 +34,8 @@ internal static class NativeDomainEnrollmentTests
             NativeDomainAuthorizationResult.InvalidCmc && source.Calls == 0, "invalid CMC precedes SOT");
         foreach (var badComputer in new[]
         {
-            computer with { ObjectId = "" }, computer with { DistinguishedName = "" },
+            computer with { ObjectId = "" }, computer with { ObjectId = Guid.Empty.ToString("D") },
+            computer with { ObjectId = "not-a-guid" }, computer with { DistinguishedName = "" },
             computer with { DnsHostName = "*.example.test" }, computer with { DnsHostName = "" },
             computer with { DnsHostName = "unqualified" }
         }) Check((await authorizer.AuthorizeAsync(badComputer, bytes, default)).Result ==
@@ -51,8 +54,8 @@ internal static class NativeDomainEnrollmentTests
             File.SetUnixFileMode(journalDirectory.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             try
             {
-                var journalComputer = computer with { ObjectId = Guid.NewGuid().ToString() };
-                var journalEnrollment = (await authorizer.AuthorizeAsync(journalComputer, bytes, default)).Enrollment!;
+                var journalComputer = computer;
+                var journalEnrollment = enrollment;
                 var journal = new EnrollmentSubmissionJournal(journalDirectory.FullName);
                 var claimsWon = new System.Collections.Concurrent.ConcurrentBag<EnrollmentSubmissionJournal.SubmissionClaim>();
                 Parallel.For(0, 12, _ => { var claim = journal.TryBegin(journalEnrollment, DateTimeOffset.UtcNow); if (claim is not null) claimsWon.Add(claim); });
@@ -78,7 +81,7 @@ internal static class NativeDomainEnrollmentTests
                     "another certificate cannot acquire receipt");
                 Check(journal.TryBegin(journalEnrollment, DateTimeOffset.UtcNow) is null, "validated request cannot be reissued");
                 var records = System.IO.Directory.GetFiles(journalDirectory.FullName);
-                var privateRecords = records.Length == 2;
+                var privateRecords = records.Length == 3;
                 foreach (var record in records)
                     privateRecords &= File.GetUnixFileMode(record) == (UnixFileMode.UserRead | UnixFileMode.UserWrite);
                 Check(privateRecords, "journal metadata durable files are owner-only");
@@ -97,9 +100,9 @@ internal static class NativeDomainEnrollmentTests
                     IssuerRequestId = 99, CertificateSha256 = new string('A', 64), ValidatedAt = DateTimeOffset.UtcNow }));
                 File.SetUnixFileMode(duplicatePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
                 var ambiguousRejected = false;
-                try { restarted.FindValidatedBinding(new string('A', 64)); }
+                try { new EnrollmentSubmissionJournal(journalDirectory.FullName).FindValidatedBinding(new string('A', 64)); }
                 catch (IOException) { ambiguousRejected = true; }
-                Check(ambiguousRejected, "same certificate across two directory identities fails closed");
+                Check(ambiguousRejected, "cold migration refuses an incoherent receipt for the same certificate");
             }
             finally
             {
@@ -242,6 +245,10 @@ internal static class NativeDomainEnrollmentTests
         var denied = await authorizer.AuthorizeAsync(computer, bytes, default);
         Check(denied.Result == NativeDomainAuthorizationResult.UnknownDevice && denied.Enrollment is null,
             "unknown SOT device gets no signing transaction");
+        source.Facts = facts with { AuthoritativeDnsHostName = "different.example.test" };
+        denied = await authorizer.AuthorizeAsync(computer, bytes, default);
+        Check(denied.Result == NativeDomainAuthorizationResult.UnknownDevice && denied.Enrollment is null,
+            "matching GUID with a different catalogue hostname gets no signing transaction");
         source.Facts = facts with { AssetId = "" };
         denied = await authorizer.AuthorizeAsync(computer, bytes, default);
         Check(denied.Result == NativeDomainAuthorizationResult.InvalidAuthoritativeFacts && denied.Enrollment is null,

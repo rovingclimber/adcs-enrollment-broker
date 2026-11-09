@@ -22,11 +22,14 @@ internal sealed record AuthoritativeDeviceFacts(
     string Location,
     string ManagementDomain,
     long SourceVersion,
-    string? AuthoritativeDnsHostName = null);
+    string? AuthoritativeDnsHostName = null)
+{
+    internal Guid? DirectoryObjectId { get; init; }
+}
 
 // Existing bare-CSR/bootstrap lookup contract. The native domain path uses
-// IDomainDeviceFactsSource with AD's authenticated dNSHostName as its lookup key;
-// a client-supplied hostname is never identity authority in either path.
+// IDomainDeviceFactsSource locates facts by authenticated AD dNSHostName.
+// Initial issuance also requires the locally enrolled object GUID.
 internal interface IAuthoritativeDeviceFactsSource
 {
     ValueTask<AuthoritativeDeviceFacts?> FindByDirectoryObjectIdAsync(

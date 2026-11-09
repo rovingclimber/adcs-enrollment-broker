@@ -10,6 +10,11 @@ runtime inventory, and package-provided notice files described below.
 
 ## Distributed application dependencies
 
+The embedded shared UI stylesheet and theme controller (ui-system.css and
+ui-theme.js), version 0.1.0, are distributed under Apache-2.0. Their license is
+included at src/PkiProxy.Api/FactsWorkbench/Web/ui-system-license.md. These assets
+make no external requests and introduce no production JavaScript dependency.
+
 The locked NuGet graph currently includes
 `System.DirectoryServices.Protocols` and
 `System.Security.Cryptography.Pkcs`, including their resolved transitive

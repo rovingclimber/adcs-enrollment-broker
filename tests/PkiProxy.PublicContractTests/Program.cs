@@ -8,6 +8,12 @@ using PkiProxy.Protocol;
 
 if (EnrollmentSubmissionJournalMarkerTests.Run(args)) return;
 
+if (args.SequenceEqual(["--http-facts-connector-contract"]))
+{
+    await HttpFactsConnectorTests.RunAsync();
+    return;
+}
+
 if (args.SequenceEqual(["--pkcs11-provider-contract"]))
 {
     await Pkcs11SignerProviderTests.RunAsync();
@@ -26,6 +32,7 @@ if (args.SequenceEqual(["--disabled-host-smoke"]))
     return;
 }
 BrokerConfigurationBoundaryTests.Run();
+DemoConsoleTests.Run();
 LinuxLdapPolicyTests.Run();
 CmcRenewalSignatureTests.Run();
 IncomingRenewalCmcTests.Run();
@@ -33,6 +40,7 @@ await NativeDomainRenewalTests.RunAsync();
 DeviceFactsEditorTests.Run();
 await DeviceFactsPublisherTests.RunAsync();
 await OperationalFactsManagementTests.RunAsync();
+await HttpFactsConnectorTests.RunAsync();
 FactsWorkbenchHostedAccessTests.Run();
 BootstrapIngressAdmissionTests.Run();
 await FactsWorkbenchPublicationTests.RunAsync();

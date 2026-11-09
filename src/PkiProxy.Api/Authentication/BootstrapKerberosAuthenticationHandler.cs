@@ -75,8 +75,8 @@ internal static class TechnicianRoutePolicy
         var candidate = value[FactsItemPrefix.Length..];
         if (!IsCanonicalAssetId(candidate)) return TechnicianRouteKind.None;
         assetId = candidate;
-        return HttpMethods.IsGet(method) ? TechnicianRouteKind.FactsItemRead :
-            HttpMethods.IsPut(method) ? TechnicianRouteKind.FactsItemWrite : TechnicianRouteKind.None;
+        if (HttpMethods.IsGet(method)) return TechnicianRouteKind.FactsItemRead;
+        return HttpMethods.IsPut(method) ? TechnicianRouteKind.FactsItemWrite : TechnicianRouteKind.None;
     }
 
     internal static bool IsCanonicalAssetId(string? value) =>

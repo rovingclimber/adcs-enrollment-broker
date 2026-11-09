@@ -133,7 +133,8 @@ internal static class BootstrapPairingTests
     private sealed class Assets(params string[] ids) : IImmutableAssetCatalog
     {
         private readonly HashSet<string> values = new(ids, StringComparer.Ordinal);
-        public bool Contains(string authoritativeAssetId) => values.Contains(authoritativeAssetId);
+        public string? FindDnsHostName(string authoritativeAssetId) =>
+            values.Contains(authoritativeAssetId) ? "device.test.example" : null;
     }
 
     private sealed class Codes(params string[] values) : IBootstrapPairingCodeGenerator

@@ -1,0 +1,39 @@
+{
+  "Version": 1,
+  "Mode": "live",
+  "BaseUri": "https://graph.microsoft.com/",
+  "Method": "GET",
+  "Path": "/v1.0/devices(deviceId='{identity}')",
+  "IdentityField": "assetId",
+  "IdentityPlacement": "pathSegment",
+  "IdentityName": null,
+  "IdentityPrefix": null,
+  "IdentitySuffix": null,
+  "Query": {
+    "$select": "id,deviceId,displayName,deviceCategory,deviceOwnership,enrollmentProfileName,managementType,trustType,extensionAttributes"
+  },
+  "Headers": null,
+  "Authentication": {
+    "Type": "bearer",
+    "BearerTokenFile": "/run/secrets/graph-access-token",
+    "ClientCertificateFile": null,
+    "ClientPrivateKeyFile": null
+  },
+  "Response": {
+    "RecordPointer": "",
+    "Cardinality": "exactly-one",
+    "Mappings": {
+      "hostname": "/displayName",
+      "assetId": "/deviceId",
+      "deviceClass": "/extensionAttributes/extensionAttribute1",
+      "useCase": "/extensionAttributes/extensionAttribute2",
+      "location": "/extensionAttributes/extensionAttribute3",
+      "managementDomain": "/extensionAttributes/extensionAttribute4"
+    }
+  },
+  "TimeoutSeconds": 10,
+  "MaximumResponseBytes": 262144,
+  "MaximumJsonDepth": 16,
+  "MaximumCacheAgeSeconds": 86400,
+  "TrustRootFile": null
+}

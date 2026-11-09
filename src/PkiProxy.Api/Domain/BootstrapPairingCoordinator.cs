@@ -70,7 +70,8 @@ internal sealed record BootstrapPairingAudit(
     DateTimeOffset ApprovedAt,
     string CsrSha256,
     string SubjectPublicKeyInfoSha256,
-    string Capability = "bootstrap-approve");
+    string Capability = "bootstrap-approve",
+    string? ApprovedDnsHostName = null);
 
 internal sealed record BootstrapPairingAttempt(
     BootstrapPairingResult Result,
@@ -85,7 +86,7 @@ internal sealed record BootstrapPairingLookup(
 
 internal interface IImmutableAssetCatalog
 {
-    bool Contains(string authoritativeAssetId);
+    string? FindDnsHostName(string authoritativeAssetId);
 }
 
 internal interface IBootstrapPairingCodeGenerator
@@ -191,7 +192,8 @@ internal sealed class BootstrapPairingCoordinator
                 return new(BootstrapPairingResult.InvalidState);
             if (!CodeMatches(session.Code, displayedCode))
                 return Fail(session, BootstrapPairingResult.InvalidCode);
-            if (!assets.Contains(authoritativeAssetId))
+            var dnsHostName = assets.FindDnsHostName(authoritativeAssetId);
+            if (!ValidatedDeviceFactsSnapshot.IsHostname(dnsHostName))
                 return Fail(session, BootstrapPairingResult.AssetUnavailable);
 
             var attested = attestations.Attest(session.Binding, authoritativeAssetId, now);
@@ -215,7 +217,8 @@ internal sealed class BootstrapPairingCoordinator
                 now,
                 Convert.ToHexString(session.Binding.CsrSha256),
                 Convert.ToHexString(session.Binding.SubjectPublicKeyInfoSha256),
-                technician.Capability);
+                technician.Capability,
+                dnsHostName);
             session.Audit = audit;
             return new(BootstrapPairingResult.Approved, audit);
         }

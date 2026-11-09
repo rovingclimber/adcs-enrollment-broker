@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.400@sha256:4beef5b8919dcaa2dc924233bd069257e883cc7a061e09088a97d152d6a48510
-ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac
+ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e
+ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c
 ARG SOFTHSM2_VERSION=2.6.1-2.2ubuntu3
 ARG KRB5_VERSION=1.20.1-6ubuntu2.10
 ARG LIBLDAP2_VERSION=2.6.10+dfsg-0ubuntu0.24.04.1
@@ -9,17 +9,18 @@ ARG KSTART_VERSION=4.3-1
 
 FROM ${DOTNET_SDK_IMAGE} AS build
 WORKDIR /src
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       openssl=3.0.13-0ubuntu3.15 util-linux=2.39.3-9ubuntu6.6 \
+RUN apt-get -o Acquire::Retries=0 update \
+    && apt-get -o Acquire::Retries=0 install -y --no-install-recommends apt=2.8.4ubuntu0.1 libapt-pkg6.0t64=2.8.4ubuntu0.1 libpcre2-8-0=10.42-4ubuntu2.2 \
+       openssl=3.0.13-0ubuntu3.16 util-linux=2.39.3-9ubuntu6.6 \
        softhsm2=2.6.1-2.2ubuntu3 opensc=0.25.0~rc1-1ubuntu0.2 \
     && rm -rf /var/lib/apt/lists/*
 COPY Directory.Build.props PkiProxy.slnx ./
 COPY src/PkiProxy.Api/PkiProxy.Api.csproj src/PkiProxy.Api/packages.lock.json src/PkiProxy.Api/
 COPY tests/PkiProxy.PublicContractTests/PkiProxy.PublicContractTests.csproj tests/PkiProxy.PublicContractTests/packages.lock.json tests/PkiProxy.PublicContractTests/
-RUN dotnet restore PkiProxy.slnx --locked-mode
+RUN dotnet restore PkiProxy.slnx --locked-mode -p:NuGetAudit=true -p:NuGetAuditMode=all -p:TreatWarningsAsErrors=true
 COPY src/PkiProxy.Api/ src/PkiProxy.Api/
 COPY tests/PkiProxy.PublicContractTests/ tests/PkiProxy.PublicContractTests/
+COPY examples/ examples/
 COPY lab/device-facts/ lab/device-facts/
 COPY smoke/ smoke/
 RUN pkcs11_root="$(mktemp -d)" \
@@ -39,8 +40,8 @@ ARG SASL_GSSAPI_VERSION
 ARG KSTART_VERSION
 WORKDIR /app
 USER root
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=0 update \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=0 install -y --no-install-recommends apt=2.8.4ubuntu0.1 libapt-pkg6.0t64=2.8.4ubuntu0.1 libpcre2-8-0=10.42-4ubuntu2.2 \
        "libgssapi-krb5-2=${KRB5_VERSION}" \
        "krb5-user=${KRB5_VERSION}" \
        "libldap2=${LIBLDAP2_VERSION}" \

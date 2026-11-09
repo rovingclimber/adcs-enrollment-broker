@@ -105,19 +105,20 @@ internal sealed class BootstrapEnrollmentIssuanceService(
         if (preparation.State is BootstrapTransactionState.SubmissionClaimed or BootstrapTransactionState.Pending)
             return new(BootstrapIssuanceResult.Uncertain);
         if (preparation.State != BootstrapTransactionState.AssetBound || preparation.AssetId is null ||
-            preparation.Binding is null || preparation.CsrDer is null)
+            preparation.Binding is null || preparation.CsrDer is null ||
+            preparation.ApprovedDnsHostName is not { } dnsName)
             return new(BootstrapIssuanceResult.Rejected);
 
         var facts = await factsSource.FindByAssetIdAsync(preparation.AssetId, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (facts is null || !string.Equals(facts.AssetId, preparation.AssetId, StringComparison.Ordinal) ||
-            facts.AuthoritativeDnsHostName is not { } dnsName)
+            !string.Equals(facts.AuthoritativeDnsHostName, dnsName, StringComparison.OrdinalIgnoreCase))
             return new(BootstrapIssuanceResult.Rejected);
 
         ControlledCertificateIdentity identity;
         try
         {
-            // The validated facts hostname is the explicit non-AD naming
+            // The approved hostname is the explicit non-AD naming
             // contract: exact CN and exact DNS SAN. Client subject/SAN values
             // from the retained CSR are never copied.
             var subject = new X500DistinguishedName("CN=" + dnsName).Name;
@@ -138,7 +139,7 @@ internal sealed class BootstrapEnrollmentIssuanceService(
             var issued = await issuer(enrollment, claimTime =>
             {
                 var claimed = transactions.TryClaimSubmission(transactionId, enrollment.ExportBinding(),
-                    enrollment.AssetId, claimTime);
+                    enrollment.AssetId, dnsName, claimTime);
                 return claimed.Result == BootstrapTransactionResult.Claimed ? claimed.Claim : null;
             }, cancellationToken);
             return new(BootstrapIssuanceResult.Issued,

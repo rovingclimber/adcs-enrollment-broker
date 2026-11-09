@@ -49,6 +49,8 @@ internal static class FactsWorkbenchPublicationTests
                     var html = await client.GetStringAsync("/");
                     Assert((await client.GetStringAsync("/publication.css")).Contains("#publish-diff", StringComparison.Ordinal));
                     Assert((await client.GetStringAsync("/workbench.js")).Contains("/api/publish", StringComparison.Ordinal));
+                    Assert((await client.GetStringAsync("/ui-system.css")).Contains("--rc-text", StringComparison.Ordinal));
+                    Assert((await client.GetStringAsync("/ui-theme.js")).Contains("rc-ui-theme", StringComparison.Ordinal));
                     var token = Regex.Match(html, "name=\"workbench-token\" content=\"([A-F0-9]+)\"", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Groups[1].Value;
                     Assert(token.Length == 64);
                     async Task<HttpResponseMessage> Send(string route, byte[] bytes, string hash, bool auth = true, string? requestOrigin = null)

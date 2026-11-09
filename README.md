@@ -64,6 +64,7 @@ operational evidence, credentials, certificate identifiers, and Git history.
 - [Component architecture](docs/architecture/components.md)
 - [Trust boundaries and durable state](docs/architecture/trust-boundaries.md)
 - [Protocol flows](docs/protocols/enrollment-flows.md)
+- [Facts connectors](docs/facts-connectors.md)
 - [Deployment topology and rollback](docs/deployment/topology.md)
 - [Docker Hub image and Compose](docs/deployment/docker-hub.md)
 - [Operations](docs/operations.md) and [troubleshooting](docs/troubleshooting.md)

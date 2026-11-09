@@ -17,6 +17,7 @@ internal sealed record WstepRequest(
 
 internal static class WstepRequestContract
 {
+    private const string InvalidBinarySecurityToken = "InvalidWstepBinarySecurityToken";
     public const int MaximumContextLength = 2048;
     public const int MaximumRequestIdLength = 256;
     public const int MaximumBinaryTokenBytes = InboundRequestLimits.DefaultMaximumDecodedBinaryBytes;
@@ -143,7 +144,7 @@ internal static class WstepRequestContract
         var tokens = operation.Elements(Wsse + "BinarySecurityToken").ToList();
         if (tokens.Count != 1 || !string.Equals((string?)tokens[0].Attribute("EncodingType"), Base64EncodingType, StringComparison.Ordinal))
         {
-            errorCode = "InvalidWstepBinarySecurityToken";
+            errorCode = InvalidBinarySecurityToken;
             return false;
         }
 
@@ -151,13 +152,13 @@ internal static class WstepRequestContract
         var nonWhitespaceLength = encoded.Count(c => !char.IsWhiteSpace(c));
         if (maximumBinaryTokenBytes is < 1 or > 1_048_576)
         {
-            errorCode = "InvalidWstepBinarySecurityToken";
+            errorCode = InvalidBinarySecurityToken;
             return false;
         }
         var maximumEncodedLength = ((maximumBinaryTokenBytes + 2) / 3) * 4;
         if (nonWhitespaceLength == 0 || nonWhitespaceLength > maximumEncodedLength)
         {
-            errorCode = "InvalidWstepBinarySecurityToken";
+            errorCode = InvalidBinarySecurityToken;
             return false;
         }
 
@@ -166,7 +167,7 @@ internal static class WstepRequestContract
             certificateRequest = Convert.FromBase64String(encoded);
             if (certificateRequest.Length == 0 || certificateRequest.Length > maximumBinaryTokenBytes)
             {
-                errorCode = "InvalidWstepBinarySecurityToken";
+                errorCode = InvalidBinarySecurityToken;
                 return false;
             }
 
@@ -174,7 +175,7 @@ internal static class WstepRequestContract
         }
         catch (FormatException)
         {
-            errorCode = "InvalidWstepBinarySecurityToken";
+            errorCode = InvalidBinarySecurityToken;
             return false;
         }
     }

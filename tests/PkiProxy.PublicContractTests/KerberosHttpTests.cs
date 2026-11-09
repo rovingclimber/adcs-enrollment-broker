@@ -23,6 +23,8 @@ internal static class KerberosHttpTests
     private const string Host = "broker.lab.example";
     private const string Path = "/cep/kerberos/service.svc/CEP";
     private const string Body = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\"><s:Body><test /></s:Body></s:Envelope>";
+    private static readonly IPAddress OtherPeer = IPAddress.Parse("127.0.0.2");
+
     internal static async Task RunAsync()
     {
         using var rootKey = RSA.Create(2048);
@@ -42,9 +44,12 @@ internal static class KerberosHttpTests
         using var publicOtherLeaf = leafReq.Create(root, now.AddMinutes(-1), now.AddMinutes(30), RandomNumberGenerator.GetBytes(16));
         using var otherLeaf = publicOtherLeaf.CopyWithPrivateKey(key);
         using var transport = new KerberosHttpTransport("HTTP/" + Host + "@LAB.EXAMPLE", "LAB.EXAMPLE", "LAB",
-            maximumExchanges: 1, exchangeTimeout: TimeSpan.FromSeconds(2), authorityPort: 443);
+            maximumExchanges: 1, exchangeTimeout: TimeSpan.FromSeconds(2), authorityPort: 443,
+            allowedClients: [IPAddress.Loopback, OtherPeer]);
         using var deniedTransport = new KerberosHttpTransport("HTTP/" + Host + "@LAB.EXAMPLE", "LAB.EXAMPLE", "LAB",
             allowedClients: [IPAddress.Parse("192.0.2.1")]);
+        using var peerTransport = new KerberosHttpTransport("HTTP/" + Host + "@LAB.EXAMPLE", "LAB.EXAMPLE", "LAB",
+            maximumExchanges: 2, authorityPort: 443, allowedClients: [IPAddress.Loopback, OtherPeer]);
         var builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders(); // Never log authorization headers/tokens.
         builder.WebHost.ConfigureKestrel(server => {
@@ -52,6 +57,7 @@ internal static class KerberosHttpTests
             server.Listen(IPAddress.Loopback, 0, listener => transport.ConfigureListener(listener, leaf));
             server.Listen(IPAddress.Loopback, 0, listener => transport.ConfigureListener(listener, otherLeaf));
             server.Listen(IPAddress.Loopback, 0, listener => deniedTransport.ConfigureListener(listener, leaf));
+            server.Listen(IPAddress.Loopback, 0, listener => peerTransport.ConfigureListener(listener, leaf));
         });
         await using var app = builder.Build();
         app.Use(KerberosHttpAuthentication.InvokeAsync);
@@ -162,17 +168,19 @@ internal static class KerberosHttpTests
             {
                 var reply = await pending.Request(negotiation);
                 Check(reply.Status == 401 && transport.ActiveExchanges == 1, "Real SPNEGO continuation owns slot");
-                using var saturated = await Wire.Connect(port, root);
+                using var saturated = await Wire.Connect(port, root, OtherPeer);
                 Check((await saturated.Request(negotiation)).Status == 503, "Global exchange limit rejects saturation");
             }
             await Until(() => transport.ActiveExchanges == 0);
             Check(transport.ActiveExchanges == 0, "Disconnect releases partial GSS context");
-            using (var idle = await Wire.Connect(port, root))
+            using (var idle = await Wire.Connect(port, root, OtherPeer))
             {
-                Check((await idle.Request(negotiation)).Status == 401, "Idle continuation started");
+                Check((await idle.Request(negotiation)).Status == 401, "Global denial returned the peer slot");
                 await Until(() => transport.ActiveExchanges == 0);
                 Check(await idle.EndOfStream(), "Idle deadline aborts connection and frees slot");
             }
+            using (var afterIdle = await Wire.Connect(port, root, OtherPeer))
+                Check((await afterIdle.Request("Negotiate AA==")).Status == 401, "Idle deadline returned the peer slot");
             Check(authenticated == 2 && directory.Reads == 2 && transport.ActiveExchanges == 0, "Authentication failures never trigger directory reads");
             foreach (var mode in new[] { 1, 2, 0 })
             {
@@ -188,9 +196,48 @@ internal static class KerberosHttpTests
                     "Directory decision preserves mutual Kerberos response");
             }
             Check(authenticated == 3 && directory.Reads == 5, "No stale directory grant reused after failure");
+            await VerifyPeerIsolationAsync(new Uri(addresses[3]).Port, root, peerTransport, negotiation, Check);
+            Check(authenticated == 4 && directory.Reads == 6, "Only the authenticated peer reached directory and handler");
             Console.WriteLine($"Kestrel HTTPS/Negotiate checks passed: {checks}. Real isolated Kerberos; native Windows still pending.");
         }
         finally { await app.StopAsync(); }
+    }
+
+    private static async Task VerifyPeerIsolationAsync(int port, X509Certificate2 root, KerberosHttpTransport transport,
+        string negotiation, Action<bool, string> check)
+    {
+        using (var pending = await Wire.Connect(port, root))
+        {
+            check((await pending.Request(negotiation)).Status == 401 && transport.ActiveExchanges == 1,
+                "First peer holds its pending exchange");
+            using var saturated = await Wire.Connect(port, root);
+            check((await saturated.Request(negotiation)).Status == 503 && transport.ActiveExchanges == 1,
+                "Same socket address is rejected at its peer limit while global capacity remains");
+
+            using var admitted = await Wire.Connect(port, root, OtherPeer);
+            using var binding = admitted.Stream.TransportContext!.GetChannelBinding(ChannelBindingKind.Endpoint)!;
+            using var client = Client("Negotiate", binding);
+            var token = client.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out _)!;
+            var reply = await admitted.Request("Negotiate " + Convert.ToBase64String(token));
+            check(reply.Status == 204 && transport.ActiveExchanges == 1,
+                "Second peer reaches authenticated handler while the first exchange is still pending");
+            _ = client.GetOutgoingBlob(Convert.FromBase64String(reply.Headers["WWW-Authenticate"][10..]), out var status);
+            check(status == NegotiateAuthenticationStatusCode.Completed && client.IsMutuallyAuthenticated,
+                "Second peer receives mutual Kerberos proof");
+
+            using var retry = await Wire.Connect(port, root, OtherPeer);
+            check((await retry.Request(negotiation)).Status == 401 && transport.ActiveExchanges == 2,
+                "Authentication success returned the second peer's slot");
+            check((await retry.Request("Negotiate AA==")).Status == 401 && transport.ActiveExchanges == 1,
+                "Kerberos failure releases the held exchange");
+            using var afterFailure = await Wire.Connect(port, root, OtherPeer);
+            check((await afterFailure.Request("Negotiate AA==")).Status == 401 && transport.ActiveExchanges == 1,
+                "Kerberos failure returned the second peer's slot");
+        }
+        await Until(() => transport.ActiveExchanges == 0);
+        using var resumed = await Wire.Connect(port, root);
+        check((await resumed.Request(negotiation)).Status == 401 && transport.ActiveExchanges == 1,
+            "Disconnect returned the first peer's slot");
     }
 
     private static NegotiateAuthentication Client(string package, ChannelBinding? binding, string target = "HTTP/" + Host) =>
@@ -241,9 +288,10 @@ internal static class KerberosHttpTests
         internal SslStream Stream { get; }
         private readonly int port;
         private Wire(TcpClient socket, SslStream stream, int port) { this.socket = socket; Stream = stream; this.port = port; }
-        internal static async Task<Wire> Connect(int port, X509Certificate2 root)
+        internal static async Task<Wire> Connect(int port, X509Certificate2 root, IPAddress? source = null)
         {
             var socket = new TcpClient();
+            if (source is not null) socket.Client.Bind(new IPEndPoint(source, 0));
             await socket.ConnectAsync(IPAddress.Loopback, port);
             var stream = new SslStream(socket.GetStream());
             var policy = new X509ChainPolicy { TrustMode = X509ChainTrustMode.CustomRootTrust, RevocationMode = X509RevocationMode.NoCheck };

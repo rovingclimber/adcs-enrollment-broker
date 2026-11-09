@@ -8,6 +8,7 @@ internal static class DeviceFactsCommand
     internal static int Run(string[] args)
     {
         if (args.Length > 0 && args[0] == "--facts-publish") return Publish(args);
+        if (args.Length > 0 && args[0] == "--facts-reconcile") return Reconcile(args);
         if (args.Length != 6 || args[0] != "--facts-use-case")
         {
             Console.Error.WriteLine("Usage: --facts-use-case SOURCE HOST_FQDN USE_CASE EXPECTED_SOURCE_SHA256 NEW_OUTPUT");
@@ -64,6 +65,26 @@ internal static class DeviceFactsCommand
         {
             // Failure may occur after rename. Never retry by recalculating expected hashes.
             Console.Error.WriteLine("Publication did not complete cleanly: " + error.Message + " Reconcile target and retained history before retrying.");
+            return 1;
+        }
+    }
+
+    private static int Reconcile(string[] args)
+    {
+        if (args.Length != 2 || !Path.IsPathFullyQualified(args[1]))
+        {
+            Console.Error.WriteLine("Usage: --facts-reconcile ABSOLUTE_TARGET");
+            return 64;
+        }
+        try
+        {
+            var recovery = DeviceFactsPublisher.Reconcile(args[1]);
+            Console.WriteLine(JsonSerializer.Serialize(new { status = "reconciled", recovery }));
+            return 0;
+        }
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException or PlatformNotSupportedException)
+        {
+            Console.Error.WriteLine("Facts reconciliation refused: " + error.Message);
             return 1;
         }
     }

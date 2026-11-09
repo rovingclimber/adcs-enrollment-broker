@@ -19,17 +19,22 @@ sequenceDiagram
     S-->>B: Bound signature response
     B->>J: Claim CA submission before transport
     B->>C: Submit restricted request once
-  else replay or policy mismatch
-    R-->>S: Existing or conflict
+  else identical correlation and digest
+    R-->>S: Existing identical request
+    S->>K: Sign approved digest again
+    S-->>B: Bound signature response
+    B->>J: Check CA submission claim
+  else correlation conflict or policy mismatch
+    R-->>S: Conflict
     S-->>B: Fail closed without key use
   end
 ```
 
 The signer does not decide device identity. It independently limits how its key
 can be used. Unknown configuration, legacy framing, unauthenticated peers,
-generation mismatch and correlation reuse fail before signing. Replay state is
-durable across signer restart and rotation.
+generation mismatch and conflicting correlation reuse fail before signing.
+The replay store retains conflict checks across a normal signer restart.
 
-The journal and signer replay store solve different problems: the signer stops
-duplicate key use, while the journal prevents a retry from becoming a second CA
-submission. Ambiguous CA outcomes require reconciliation, never a blind retry.
+An identical retry may repeat a private-key operation. The submission journal
+prevents the retry from becoming a second CA submission. Ambiguous CA outcomes
+require reconciliation before any new attempt.

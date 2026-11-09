@@ -7,6 +7,7 @@ namespace PkiProxy.Domain;
 // Offline operator helper. Never writes the mounted authority or grants AD access.
 internal static class DeviceFactsEditor
 {
+    private const string RevisionField = "revision";
     private static readonly JsonSerializerOptions OutputOptions = new() { WriteIndented = true };
     internal static byte[] PrepareDocument(ReadOnlyMemory<byte> current, string expectedSha256,
         ReadOnlyMemory<byte> proposed)
@@ -14,8 +15,10 @@ internal static class DeviceFactsEditor
         if (expectedSha256.Length != 64 || !expectedSha256.All(char.IsAsciiHexDigit) ||
             !Convert.ToHexString(SHA256.HashData(current.Span)).Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Source changed. Reload and review the current facts before editing.");
-        _ = JsonFileDeviceFactsSource.Parse(current, null);
-        _ = JsonFileDeviceFactsSource.Parse(proposed, null);
+        var originalSnapshot = ValidatedDeviceFactsSnapshot.Parse(current);
+        var candidateSnapshot = ValidatedDeviceFactsSnapshot.Parse(proposed);
+        if (!originalSnapshot.HasSameDirectoryBindings(candidateSnapshot))
+            throw new InvalidDataException("Directory object bindings require a governed catalogue migration.");
         static JsonObject Document(ReadOnlyMemory<byte> bytes)
         {
             var span = bytes.Span;
@@ -25,10 +28,10 @@ internal static class DeviceFactsEditor
         var original = Document(current);
         var candidate = Document(proposed);
         if (!JsonNode.DeepEquals(original["useCases"], candidate["useCases"]) ||
-            !JsonNode.DeepEquals(original["revision"], candidate["revision"]))
+            !JsonNode.DeepEquals(original[RevisionField], candidate[RevisionField]))
             throw new InvalidDataException("The workbench cannot change the approved use-case catalogue or source revision.");
         if (JsonNode.DeepEquals(original, candidate)) throw new InvalidDataException("No device changes to export.");
-        candidate["revision"] = checked(original["revision"]!.GetValue<long>() + 1);
+        candidate[RevisionField] = checked(original[RevisionField]!.GetValue<long>() + 1);
         var output = JsonSerializer.SerializeToUtf8Bytes(candidate, OutputOptions);
         _ = JsonFileDeviceFactsSource.Parse(output, null);
         return output;
@@ -52,7 +55,7 @@ internal static class DeviceFactsEditor
         var device = document["devices"]!.AsArray().Single(item =>
             item!["hostname"]!.GetValue<string>().Equals(hostname, StringComparison.OrdinalIgnoreCase))!;
         device["useCase"] = useCase;
-        document["revision"] = checked(selected.SourceVersion + 1);
+        document[RevisionField] = checked(selected.SourceVersion + 1);
         var output = JsonSerializer.SerializeToUtf8Bytes(document, OutputOptions);
         _ = JsonFileDeviceFactsSource.Parse(output, hostname); // Identical validator to live enrollment.
         return output;

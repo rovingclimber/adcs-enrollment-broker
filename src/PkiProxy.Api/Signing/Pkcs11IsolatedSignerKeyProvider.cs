@@ -9,18 +9,12 @@ namespace PkiProxy.Signing;
 
 internal sealed class Pkcs11IsolatedSignerKeyProvider : IIsolatedSignerKeyProvider
 {
-    private const ulong CkfSerialSession = 0x4;
-    private const ulong CkfSign = 0x800;
-    private const ulong CkuUser = 1;
     private const ulong CkoCertificate = 1;
     private const ulong CkoPublicKey = 2;
     private const ulong CkoPrivateKey = 3;
     private const ulong CkkRsa = 0;
-    private const ulong CkmRsaPkcs = 1;
-    private const ulong CkaClass = 0;
     private const ulong CkaToken = 1;
     private const ulong CkaPrivate = 2;
-    private const ulong CkaLabel = 3;
     private const ulong CkaValue = 0x11;
     private const ulong CkaCertificateType = 0x80;
     private const ulong CkaKeyType = 0x100;
@@ -101,45 +95,48 @@ internal sealed class Pkcs11IsolatedSignerKeyProvider : IIsolatedSignerKeyProvid
             if (!module.SupportsRsaPkcsSigning(slot)) throw Unavailable();
             using var session = module.OpenSession(slot);
             session.Login(pin);
-            {
-                var privateKeys = session.FindObjects(CkoPrivateKey, keyId);
-                var publicKeys = session.FindObjects(CkoPublicKey, keyId);
-                var certificates = session.FindObjects(CkoCertificate, keyId);
-                if (privateKeys.Length != 1 || publicKeys.Length != 1 || certificates.Length != 1) throw Unavailable();
-                var privateKey = privateKeys[0];
-                RequireAttribute(session, publicKeys[0], CkaToken, true);
-                RequireAttribute(session, certificates[0], CkaToken, true);
-                RequireAttribute(session, privateKey, CkaToken, true);
-                RequireAttribute(session, privateKey, CkaPrivate, true);
-                RequireAttribute(session, privateKey, CkaSensitive, true);
-                RequireAttribute(session, privateKey, CkaExtractable, false);
-                RequireAttribute(session, privateKey, CkaSign, true);
-                RequireAttribute(session, privateKey, CkaDecrypt, false);
-                RequireAttribute(session, privateKey, CkaUnwrap, false);
-                RequireAttribute(session, privateKey, CkaDerive, false);
-                if (session.ReadUlong(privateKey, CkaKeyType) != CkkRsa ||
-                    session.ReadUlong(publicKeys[0], CkaKeyType) != CkkRsa ||
-                    session.ReadUlong(certificates[0], CkaCertificateType) != 0 ||
-                    session.ReadUlong(publicKeys[0], CkaModulusBits) < 3072)
-                    throw Unavailable();
+            var privateKeys = session.FindObjects(CkoPrivateKey, keyId);
+            var publicKeys = session.FindObjects(CkoPublicKey, keyId);
+            var certificates = session.FindObjects(CkoCertificate, keyId);
+            if (privateKeys.Length != 1 || publicKeys.Length != 1 || certificates.Length != 1) throw Unavailable();
+            var privateKey = privateKeys[0];
+            RequireAttribute(session, publicKeys[0], CkaToken, true);
+            RequireAttribute(session, certificates[0], CkaToken, true);
+            RequireAttribute(session, privateKey, CkaToken, true);
+            RequireAttribute(session, privateKey, CkaPrivate, true);
+            RequireAttribute(session, privateKey, CkaSensitive, true);
+            RequireAttribute(session, privateKey, CkaExtractable, false);
+            RequireAttribute(session, privateKey, CkaSign, true);
+            RequireAttribute(session, privateKey, CkaDecrypt, false);
+            RequireAttribute(session, privateKey, CkaUnwrap, false);
+            RequireAttribute(session, privateKey, CkaDerive, false);
+            if (session.ReadUlong(privateKey, CkaKeyType) != CkkRsa ||
+                session.ReadUlong(publicKeys[0], CkaKeyType) != CkkRsa ||
+                session.ReadUlong(certificates[0], CkaCertificateType) != 0 ||
+                session.ReadUlong(publicKeys[0], CkaModulusBits) < 3072)
+                throw Unavailable();
 
-                var modulus = session.ReadBytes(publicKeys[0], CkaModulus);
-                var exponent = session.ReadBytes(publicKeys[0], CkaPublicExponent);
-                if (modulus.Length < 384 || exponent.Length is < 1 or > 8) throw Unavailable();
-                using var rsa = RSA.Create(new RSAParameters { Modulus = modulus, Exponent = exponent });
-                var spki = rsa.ExportSubjectPublicKeyInfo();
-                var encodedCertificate = session.ReadBytes(certificates[0], CkaValue);
-                var certificate = X509CertificateLoader.LoadCertificate(encodedCertificate);
-                using var certificateKey = certificate.GetRSAPublicKey();
-                if (certificateKey is null || certificateKey.KeySize < 3072 ||
-                    !CryptographicOperations.FixedTimeEquals(spki, certificateKey.ExportSubjectPublicKeyInfo()))
-                { certificate.Dispose(); throw Unavailable(); }
-                return new Pkcs11IsolatedSignerKeyProvider(module, slot, keyId.ToArray(), pin, maximumSessions, certificate, spki);
-            }
+            var modulus = session.ReadBytes(publicKeys[0], CkaModulus);
+            var exponent = session.ReadBytes(publicKeys[0], CkaPublicExponent);
+            if (modulus.Length < 384 || exponent.Length is < 1 or > 8) throw Unavailable();
+            using var rsa = RSA.Create(new RSAParameters { Modulus = modulus, Exponent = exponent });
+            var spki = rsa.ExportSubjectPublicKeyInfo();
+            var encodedCertificate = session.ReadBytes(certificates[0], CkaValue);
+            var certificate = X509CertificateLoader.LoadCertificate(encodedCertificate);
+            using var certificateKey = certificate.GetRSAPublicKey();
+            if (certificateKey is null || certificateKey.KeySize < 3072 ||
+                !CryptographicOperations.FixedTimeEquals(spki, certificateKey.ExportSubjectPublicKeyInfo()))
+            { certificate.Dispose(); throw Unavailable(); }
+            return new Pkcs11IsolatedSignerKeyProvider(module, slot, keyId.ToArray(), pin, maximumSessions, certificate, spki);
         }
         catch (Exception exception) when (exception is Pkcs11Exception or CryptographicException or IOException)
         {
-            try { module?.Dispose(); } catch { }
+            try { module?.Dispose(); }
+            catch
+            {
+                // Native cleanup is best effort after provider initialization
+                // failed. Still wipe the PIN and report the original failure.
+            }
             CryptographicOperations.ZeroMemory(pin);
             throw Unavailable();
         }
@@ -159,15 +156,13 @@ internal sealed class Pkcs11IsolatedSignerKeyProvider : IIsolatedSignerKeyProvid
             if (Volatile.Read(ref failed) != 0 || Volatile.Read(ref disposed) != 0) throw Unavailable();
             using var session = module.OpenSession(slot);
             session.Login(pin);
-            {
-                var keys = session.FindObjects(CkoPrivateKey, keyId);
-                if (keys.Length != 1) throw new Pkcs11Exception();
-                Span<byte> digestInfo = stackalloc byte[Sha256DigestInfoPrefix.Length + 32];
-                Sha256DigestInfoPrefix.CopyTo(digestInfo);
-                hash.CopyTo(digestInfo[Sha256DigestInfoPrefix.Length..]);
-                try { return session.SignRsaPkcs(keys[0], digestInfo); }
-                finally { CryptographicOperations.ZeroMemory(digestInfo); }
-            }
+            var keys = session.FindObjects(CkoPrivateKey, keyId);
+            if (keys.Length != 1) throw new Pkcs11Exception();
+            Span<byte> digestInfo = stackalloc byte[Sha256DigestInfoPrefix.Length + 32];
+            Sha256DigestInfoPrefix.CopyTo(digestInfo);
+            hash.CopyTo(digestInfo[Sha256DigestInfoPrefix.Length..]);
+            try { return session.SignRsaPkcs(keys[0], digestInfo); }
+            finally { CryptographicOperations.ZeroMemory(digestInfo); }
         }
         catch (Exception exception) when (exception is Pkcs11Exception or ObjectDisposedException)
         {
@@ -354,9 +349,25 @@ internal sealed class Pkcs11Module : IDisposable
         return value;
     }
     internal ulong ReadUlong(ulong session, ulong objectHandle, ulong attribute)
-    { var bytes = ReadBytes(session, objectHandle, attribute); try { if (bytes.Length != 8) throw new Pkcs11Exception(); return BitConverter.ToUInt64(bytes); } finally { CryptographicOperations.ZeroMemory(bytes); } }
+    {
+        var bytes = ReadBytes(session, objectHandle, attribute);
+        try
+        {
+            if (bytes.Length != 8) throw new Pkcs11Exception();
+            return BitConverter.ToUInt64(bytes);
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
+    }
     internal bool ReadBoolean(ulong session, ulong objectHandle, ulong attribute)
-    { var bytes = ReadBytes(session, objectHandle, attribute); try { if (bytes.Length != 1 || bytes[0] > 1) throw new Pkcs11Exception(); return bytes[0] != 0; } finally { CryptographicOperations.ZeroMemory(bytes); } }
+    {
+        var bytes = ReadBytes(session, objectHandle, attribute);
+        try
+        {
+            if (bytes.Length != 1 || bytes[0] > 1) throw new Pkcs11Exception();
+            return bytes[0] != 0;
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
+    }
     internal void GenerateRsaKeyPairForTests(ulong session, byte[] id, string label, bool decrypt)
     {
         var text = Encoding.ASCII.GetBytes(label);
@@ -479,5 +490,9 @@ internal sealed class Pkcs11Session : IDisposable
     internal bool ReadBoolean(ulong objectHandle, ulong attribute) => module.ReadBoolean(handle, objectHandle, attribute);
     internal void GenerateRsaKeyPairForTests(byte[] id, string label, bool decrypt = false) => module.GenerateRsaKeyPairForTests(handle, id, label, decrypt);
     internal byte[] SignRsaPkcs(ulong key, ReadOnlySpan<byte> data) => module.Sign(handle, key, data);
-    public void Dispose() { if (Interlocked.Exchange(ref disposed, 1) != 0) return; module.Close(handle); }
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+        module.Close(handle);
+    }
 }

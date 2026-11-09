@@ -7,7 +7,7 @@ internal static class BrokerConfigurationBoundary
 {
     private static readonly HashSet<string> AllowedSections = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Bootstrap", "BootstrapConfigurationFile", "Certificate", "DeviceFactsFile", "Directory",
+        "Bootstrap", "BootstrapConfigurationFile", "Certificate", "DeviceFactsFile", "FactsConnectorProfileFile", "Directory",
         "FactsManagement", "FactsManagementConfigurationFile", "InboundLimits", "Issuance",
         "IssuingCaFile", "Kerberos", "Signer", "XcepPolicyFile"
     };
@@ -20,10 +20,10 @@ internal static class BrokerConfigurationBoundary
 
         IsolatedSignerConfiguration.Validate(broker.GetSection("Signer"));
 
-        foreach (var setting in broker.AsEnumerable(makePathsRelative: true))
+        foreach (var setting in broker.AsEnumerable(makePathsRelative: true).Select(setting => setting.Value))
         {
-            if (string.IsNullOrWhiteSpace(setting.Value)) continue;
-            var value = setting.Value.Trim();
+            if (string.IsNullOrWhiteSpace(setting)) continue;
+            var value = setting.Trim();
             if (value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
                 value.Contains("REPLACE_ME", StringComparison.OrdinalIgnoreCase) ||
                 value.Contains("example.test", StringComparison.OrdinalIgnoreCase) ||

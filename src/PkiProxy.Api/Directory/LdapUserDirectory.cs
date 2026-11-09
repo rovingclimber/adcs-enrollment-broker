@@ -8,8 +8,9 @@ namespace PkiProxy.Directory;
 // uses only the broker's managed Kerberos cache and never delegated credentials.
 internal sealed class LdapUserDirectory : IUserDirectory
 {
+    private const string ObjectGuidAttribute = "objectGUID";
     private static readonly string[] Attributes =
-        ["objectGUID", "sAMAccountName", "userAccountControl", "sAMAccountType", "tokenGroups"];
+        [ObjectGuidAttribute, "sAMAccountName", "userAccountControl", "sAMAccountType", "tokenGroups"];
     private readonly string server;
     private readonly string baseDn;
     private readonly Action<string>? observe;
@@ -39,16 +40,16 @@ internal sealed class LdapUserDirectory : IUserDirectory
         var escaped = EscapeFilter(accountName);
         var initial = Search(connection, baseDn,
             "(&(objectClass=user)(objectCategory=person)(sAMAccountName=" + escaped + "))",
-            SearchScope.Subtree, ["objectGUID"], cancellationToken);
+            SearchScope.Subtree, [ObjectGuidAttribute], cancellationToken);
         if (initial is null) { observe?.Invoke("no-unique-user"); return null; }
-        var guid = Bytes(initial, "objectGUID");
+        var guid = Bytes(initial, ObjectGuidAttribute);
         if (guid is not { Length: 16 }) { observe?.Invoke("invalid-object-guid"); return null; }
 
         var boundFilter = "(&(objectClass=user)(objectCategory=person)(objectGUID=" +
             EscapeBinary(guid) + "))";
         var entry = Search(connection, initial.DistinguishedName, boundFilter,
             SearchScope.Base, Attributes, cancellationToken);
-        if (entry is null || !guid.AsSpan().SequenceEqual(Bytes(entry, "objectGUID")))
+        if (entry is null || !guid.AsSpan().SequenceEqual(Bytes(entry, ObjectGuidAttribute)))
         { observe?.Invoke("object-bound-read-failed"); return null; }
 
         var groups = entry.Attributes["tokenGroups"];

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text;
@@ -53,6 +54,14 @@ internal static class EnrollmentSubmissionJournalMarkerTests
             Environment.ExitCode = Begin(new EnrollmentSubmissionJournal(args[1])) is null ? 10 : 0;
             return true;
         }
+        if (args.Length == 3 && args[0] == "--submission-journal-receipt-fixture")
+        {
+            var claim = Begin(new EnrollmentSubmissionJournal(args[1]), csrSeed: byte.Parse(args[2], CultureInfo.InvariantCulture));
+            if (claim is null) throw new InvalidOperationException("Distinct fixture CSR required.");
+            try { claim.RecordValidatedResponse("27", Hash, Now); }
+            catch (IOException) { Environment.ExitCode = 11; }
+            return true;
+        }
         if (args.Length != 0) return false;
         WithScratch(path =>
         {
@@ -70,16 +79,12 @@ internal static class EnrollmentSubmissionJournalMarkerTests
             Reject(() => claim.RecordValidatedResponse("28", new string('B', 64), Now), "valid receipt winner cannot be overwritten");
             Check(reopened.FindValidatedBinding(Hash) == found && Begin(reopened) is null, "completed attempt stays closed");
             var files = System.IO.Directory.GetFiles(path);
-            Check(files.Length == 2 && files.All(IsOwnerOnly), "only owner-only final records remain");
-            var otherKey = ObjectId.ToString("N") + "-" + new string('1', 64);
-            Write(Path.Combine(path, otherKey + ".submitted.json"), Mutate(Submitted(), "CsrSha256", new string('1', 64)));
-            Write(Path.Combine(path, otherKey + ".validated.json"), Receipt());
-            Reject(() => reopened.FindValidatedBinding(Hash), "two valid v2 receipts remain ambiguous");
+            Check(files.Length == 3 && files.All(IsOwnerOnly), "only owner-only final records and index remain");
         });
         GraphChecks();
         WithScratch(path =>
         {
-            var children = Enumerable.Range(0, 6).Select(_ => StartClaimProcess(path)).ToArray();
+            var children = Enumerable.Range(0, 6).Select(_ => StartFixtureProcess("--submission-journal-claim-fixture", path)).ToArray();
             try
             {
                 foreach (var child in children)
@@ -90,6 +95,9 @@ internal static class EnrollmentSubmissionJournalMarkerTests
             }
             finally { foreach (var child in children) { if (!child.HasExited) child.Kill(entireProcessTree: true); child.Dispose(); } }
         });
+        ReceiptIndexMigrationChecks();
+        ReceiptIndexPublicationChecks();
+        ReceiptIndexValidationChecks();
         WithScratch(path =>
         {
             var journal = new EnrollmentSubmissionJournal(path);
@@ -138,7 +146,7 @@ internal static class EnrollmentSubmissionJournalMarkerTests
                     Write(final, content);
                     if (receipt)
                     {
-                        Reject(() => journal.FindValidatedBinding(Hash), "corrupt receipt fails lookup");
+                        Reject(() => new EnrollmentSubmissionJournal(path).FindValidatedBinding(Hash), "corrupt receipt fails cold lookup");
                         Reject(() => claim!.RecordValidatedResponse("27", Hash, Now), "corrupt receipt winner fails publication");
                     }
                     else Reject(() => Begin(journal), "corrupt submitted winner is a storage fault");
@@ -171,24 +179,11 @@ internal static class EnrollmentSubmissionJournalMarkerTests
             var submitted = Path.Combine(path, Key + ".submitted.json");
             var legacy = Remove(Remove(Remove(Mutate(Submitted(), "Version", 1), "AssetId"), "RequestKind"), "OldCertificateSha256");
             Write(submitted, legacy);
-            Check(Begin(journal) is null && File.ReadAllText(submitted) == legacy, "legacy submitted marker remains an unchanged blocker");
             Write(Path.Combine(path, Key + ".validated.json"), "{\"Version\":1,\"IssuerRequestId\":26,\"CertificateSha256\":\"" + Hash + "\"}");
-            Check(journal.FindValidatedBinding(Hash) is null && journal.FindValidatedBinding(ObjectId, Hash) is null,
+            Check(Begin(journal) is null && File.ReadAllText(submitted) == legacy, "legacy submitted marker remains an unchanged blocker");
+            Check(!File.Exists(IndexPath(path)) && journal.FindValidatedBinding(Hash) is null &&
+                journal.FindValidatedBinding(ObjectId, Hash) is null,
                 "strictly inspected legacy v1 receipt never grants renewal");
-        });
-        WithScratch(path =>
-        {
-            Write(Path.Combine(path, Key + ".submitted.json"), Submitted());
-            Write(Path.Combine(path, Key + ".validated.json"), Mutate(Receipt(), "CertificateSha256", Hash.ToLowerInvariant()));
-            var journal = new EnrollmentSubmissionJournal(path);
-            Check(Begin(journal) is null && journal.FindValidatedBinding(Hash)?.CertificateSha256 == Hash,
-                "existing v2 files are read without migration, including lowercase stored hash");
-        });
-        WithScratch(path =>
-        {
-            for (var i = 0; i < 4097; i++)
-                Write(Path.Combine(path, i + ".validated.json"), "{\"Version\":1}");
-            Reject(() => new EnrollmentSubmissionJournal(path).FindValidatedBinding(Hash), "receipt enumeration remains capped at 4096");
         });
         WithScratch(path =>
         {
@@ -225,6 +220,139 @@ internal static class EnrollmentSubmissionJournalMarkerTests
         Console.WriteLine($"Submission journal marker checks passed: {checks}");
         return false;
     }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    private static void ReceiptIndexMigrationChecks()
+    {
+        WithScratch(path =>
+        {
+            for (var i = 0; i < 4097; i++)
+                Write(Path.Combine(path, i.ToString(CultureInfo.InvariantCulture) + ".validated.json"), "{\"Version\":1}");
+            var submittedPath = Path.Combine(path, Key + ".submitted.json");
+            var receiptPath = Path.Combine(path, Key + ".validated.json");
+            var legacyReceipt = Mutate(Receipt(), "CertificateSha256", Hash.ToLowerInvariant());
+            Write(submittedPath, Submitted());
+            Write(receiptPath, legacyReceipt);
+            var journal = new EnrollmentSubmissionJournal(path);
+            var binding = new RecordedDomainCertificate(ObjectId, "asset/marker-test", Hash);
+            Check(journal.InspectHistoricalBinding(ObjectId, Hash.ToLowerInvariant()) == binding && !File.Exists(IndexPath(path)),
+                "operator preflight finds legacy v2 binding without creating an index");
+            Check(journal.FindValidatedBinding(Hash.ToLowerInvariant()) == binding &&
+                journal.FindValidatedBinding(ObjectId, Hash) == binding, "v2 receipt migrates beyond the old global cap");
+            Check(Begin(journal) is null && journal.FindValidatedBinding(Guid.NewGuid(), Hash) is null,
+                "migration preserves the claim blocker and exact GUID check");
+            Check(File.ReadAllText(receiptPath) == legacyReceipt && File.ReadAllText(submittedPath) == Submitted() &&
+                File.ReadAllText(IndexPath(path)) == JsonSerializer.Serialize(Key + ".validated.json") && IsOwnerOnly(IndexPath(path)),
+                "migration preserves source records and writes only the canonical private pointer");
+            Write(Path.Combine(path, "0.validated.json"), "{");
+            Check(journal.FindValidatedBinding(Hash) == binding, "warm lookup does not read unrelated corrupt receipts");
+            var cold = new EnrollmentSubmissionJournal(path);
+            Reject(() => cold.FindValidatedBinding(Hash), "cold migration refuses unrelated corrupt history");
+            Reject(() => Begin(new EnrollmentSubmissionJournal(path), csrSeed: 1), "cold migration failure prevents a new claim");
+            Check(System.IO.Directory.GetFiles(path, "*.submitted.json").Length == 1,
+                "failed migration consumes no new submission");
+        });
+        WithScratch(path =>
+        {
+            var secondCsr = new string('1', 64);
+            var secondKey = ObjectId.ToString("N") + "-" + secondCsr;
+            Write(Path.Combine(path, Key + ".submitted.json"), Submitted());
+            Write(Path.Combine(path, Key + ".validated.json"), Receipt());
+            Write(Path.Combine(path, secondKey + ".submitted.json"), Mutate(Submitted(), "CsrSha256", secondCsr));
+            Write(Path.Combine(path, secondKey + ".validated.json"), Mutate(Receipt(), "CertificateSha256", Hash.ToLowerInvariant()));
+            var journal = new EnrollmentSubmissionJournal(path);
+            Reject(() => journal.InspectHistoricalBinding(ObjectId, Hash), "operator preflight refuses ambiguous same-object history");
+            Check(!File.Exists(IndexPath(path)), "ambiguous preflight leaves history untouched");
+            Reject(() => journal.FindValidatedBinding(Hash), "two coherent legacy receipts for the same digest fail migration");
+            Reject(() => new EnrollmentSubmissionJournal(path).FindValidatedBinding(ObjectId, Hash),
+                "restarted migration still refuses a legacy duplicate after partial backfill");
+        });
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    private static void ReceiptIndexPublicationChecks()
+    {
+        WithScratch(path =>
+        {
+            var journal = new EnrollmentSubmissionJournal(path);
+            var claim = Begin(journal)!;
+            var index = IndexPath(path);
+            Write(index, JsonSerializer.Serialize(Key + ".validated.json"));
+            var reopened = new EnrollmentSubmissionJournal(path);
+            Reject(() => reopened.FindValidatedBinding(Hash), "interrupted pointer-only publication grants no authority");
+            var different = Begin(reopened, csrSeed: 1)!;
+            Reject(() => different.RecordValidatedResponse("27", Hash.ToLowerInvariant(), Now),
+                "interrupted reservation still blocks a different receipt key");
+            claim.RecordValidatedResponse("27", Hash, Now);
+            Check(reopened.FindValidatedBinding(Hash)?.DirectoryObjectId == ObjectId,
+                "the same validated claim can finish a pointer-only reservation");
+            Reject(() => claim.RecordValidatedResponse("27", Hash, Now), "a durable receipt never replays");
+        });
+        WithScratch(path =>
+        {
+            const string mode = "--submission-journal-receipt-fixture";
+            using var first = StartFixtureProcess(mode, path, "0");
+            using var second = StartFixtureProcess(mode, path, "1");
+            try
+            {
+                Check(first.WaitForExit(30000) && second.WaitForExit(30000), "receipt subprocesses complete");
+                Check(Math.Min(first.ExitCode, second.ExitCode) == 0 && Math.Max(first.ExitCode, second.ExitCode) == 11,
+                    "exactly one receipt key reserves a digest across processes");
+                Check(System.IO.Directory.GetFiles(path).Length == 4 &&
+                    new EnrollmentSubmissionJournal(path).FindValidatedBinding(Hash)?.DirectoryObjectId == ObjectId,
+                    "race preserves two claims, one receipt and one index without staging residue");
+            }
+            finally
+            {
+                if (!first.HasExited) first.Kill(entireProcessTree: true);
+                if (!second.HasExited) second.Kill(entireProcessTree: true);
+            }
+        });
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    private static void ReceiptIndexValidationChecks()
+    {
+        WithScratch(path =>
+        {
+            var journal = new EnrollmentSubmissionJournal(path);
+            Begin(journal)!.RecordValidatedResponse("27", Hash, Now);
+            var index = IndexPath(path);
+            var receiptPath = Path.Combine(path, Key + ".validated.json");
+            var submittedPath = Path.Combine(path, Key + ".submitted.json");
+            File.Delete(index);
+            Check(journal.FindValidatedBinding(Hash) is null, "warm lookup denies a missing index without scanning");
+            Check(new EnrollmentSubmissionJournal(path).FindValidatedBinding(Hash) is not null, "cold migration can recreate a missing pointer from the exact v2 pair");
+            var pointer = File.ReadAllText(index);
+            foreach (var invalid in new[] { "{", "null", JsonSerializer.Serialize("../" + Key + ".validated.json"),
+                JsonSerializer.Serialize(Key.ToUpperInvariant() + ".validated.json") })
+            {
+                Write(index, invalid);
+                Reject(() => journal.FindValidatedBinding(Hash), "index rejects malformed or noncanonical targets");
+            }
+            Write(index, pointer);
+            File.SetUnixFileMode(index, PrivateFile | UnixFileMode.GroupRead);
+            Reject(() => journal.FindValidatedBinding(Hash), "index must be owner-only");
+            File.SetUnixFileMode(index, PrivateFile);
+            var otherHash = new string('B', 64);
+            Begin(journal, csrSeed: 1)!.RecordValidatedResponse("28", otherHash, Now);
+            Write(index, File.ReadAllText(IndexPath(path, otherHash)));
+            Reject(() => journal.FindValidatedBinding(Hash), "index cannot redirect to a valid receipt for a different digest");
+            Write(index, pointer);
+            foreach (var invalid in new[] { "{", "{\"Version\":1}", Mutate(Receipt(), "CertificateSha256", new string('B', 64)) })
+            {
+                Write(receiptPath, invalid);
+                Reject(() => journal.FindValidatedBinding(Hash), "index cannot grant with an invalid or mismatched receipt");
+            }
+            Write(receiptPath, Receipt());
+            Write(submittedPath, Mutate(Submitted(), "AssetId", "other-asset"));
+            Reject(() => journal.FindValidatedBinding(Hash), "index still requires the exact durable submitted companion");
+            Write(submittedPath, Submitted());
+            Check(journal.FindValidatedBinding(Hash) is not null, "matching valid journal graph still grants");
+        });
+    }
+
+    private static string IndexPath(string path, string? hash = null) => Path.Combine(path, ".receipt-" + (hash ?? Hash) + ".json");
 
     [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     private static void GraphChecks()
@@ -275,7 +403,7 @@ internal static class EnrollmentSubmissionJournalMarkerTests
                 var claim = Begin(journal)!;
                 var final = Path.Combine(path, Key + ".validated.json");
                 Write(final, content);
-                Reject(() => journal.FindValidatedBinding(Hash), "receipt identity and timeline must match companion");
+                Reject(() => new EnrollmentSubmissionJournal(path).FindValidatedBinding(Hash), "receipt identity and timeline must match companion");
                 Reject(() => claim.RecordValidatedResponse("27", Hash, Now), "incoherent receipt winner is a storage fault");
                 Check(File.ReadAllText(final) == content, "incoherent receipt winner is not overwritten");
             });
@@ -315,9 +443,14 @@ internal static class EnrollmentSubmissionJournalMarkerTests
         });
     }
 
-    private static EnrollmentSubmissionJournal.SubmissionClaim? Begin(EnrollmentSubmissionJournal journal, string? oldCertificate = null) =>
-        (EnrollmentSubmissionJournal.SubmissionClaim?)Invoke(journal, "TryBeginCore", ObjectId, "asset/marker-test", 1L,
-            new CmcRequestBinding(new byte[32], new CsrBinding(new byte[32], new byte[32])), oldCertificate, Now);
+    private static EnrollmentSubmissionJournal.SubmissionClaim? Begin(EnrollmentSubmissionJournal journal,
+        string? oldCertificate = null, byte csrSeed = 0)
+    {
+        var csrHash = new byte[32];
+        csrHash[0] = csrSeed;
+        return (EnrollmentSubmissionJournal.SubmissionClaim?)Invoke(journal, "TryBeginCore", ObjectId, "asset/marker-test", 1L,
+            new CmcRequestBinding(new byte[32], new CsrBinding(csrHash, new byte[32])), oldCertificate, Now);
+    }
 
     private static string Submitted() => JsonSerializer.Serialize(new {
         Version = 2, DirectoryObjectId = ObjectId, AssetId = "asset/marker-test", CsrSha256 = new string('0', 64),
@@ -359,14 +492,13 @@ internal static class EnrollmentSubmissionJournalMarkerTests
         try { action(directory.FullName); }
         finally { directory.Delete(recursive: true); }
     }
-    private static Process StartClaimProcess(string path)
+    private static Process StartFixtureProcess(params string[] args)
     {
         var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Test process path required.");
         var start = new ProcessStartInfo(executable) { UseShellExecute = false };
         if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
             start.ArgumentList.Add(typeof(EnrollmentSubmissionJournalMarkerTests).Assembly.Location);
-        start.ArgumentList.Add("--submission-journal-claim-fixture");
-        start.ArgumentList.Add(path);
+        foreach (var argument in args) start.ArgumentList.Add(argument);
         return Process.Start(start) ?? throw new InvalidOperationException("Cannot start journal fixture process.");
     }
     private sealed class SerializationFailure(string directory, string final)

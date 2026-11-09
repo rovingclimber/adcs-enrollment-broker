@@ -9,6 +9,8 @@ flowchart LR
   subgraph B[Broker host boundary]
     IN[Bounded protocol listeners]
     PE[Policy engine]
+    CO[Optional bounded HTTP connector]
+    FC[(Last-known-good facts cache)]
     ST[(Journal, bootstrap, bindings)]
   end
   subgraph S[Separated signer boundary]
@@ -27,7 +29,10 @@ flowchart LR
   IN --> PE
   PE <--> ST
   PE --> DI
-  PE --> FA
+  PE --> CO
+  CO --> FA
+  CO --> FC
+  FC --> PE
   PE -->|authenticated local signing intent| SV
   SV --> KS
   SV <--> RS
@@ -41,6 +46,7 @@ flowchart LR
 | Broker | Authenticates, resolves facts, decides policy and validates output | Dedicated identity; bounded listeners; owner-only state |
 | Signer | Enforces intent schema, generation, digest and replay policy | Separate process/UID and socket; production hardware custody |
 | Directory/facts | Supplies current identity and policy facts | Authenticated TLS; exact search bases and groups; audited updates |
+| HTTP connector | Maps an immutable catalogue identity to bounded provider JSON | Exact HTTPS origin, owner-only credentials, typed encoding, strict cardinality, finite cache age |
 | CA | Issues only through a restricted template and service identity | Minimal enrollment authority; pinned trust and revocation |
 
 Durable state is part of the security boundary. Journals, transactions, quotas,

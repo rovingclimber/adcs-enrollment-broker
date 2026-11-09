@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "sessionId": "demo-client-001",
+  "title": "Endpoint enrollment and network authorization",
+  "updatedUtc": "1970-01-01T12:00:30Z",
+  "device": {
+    "hostname": "CLIENT-001.example.test",
+    "assetId": "asset-client-001",
+    "macAddress": "02:00:00:00:01:01"
+  },
+  "scenarios": [
+    {
+      "id": "native",
+      "label": "As-is · direct AD CS",
+      "summary": "The endpoint receives policy from the domain, enrolls directly with AD CS, then presents the resulting machine certificate to 802.1X. Network intent has to be reconstructed from directory structure, names or external mappings.",
+      "stages": [
+        {"id":"directory","label":"AD identity","status":"pending"},
+        {"id":"policy","label":"GPO & policy","status":"pending"},
+        {"id":"ca","label":"AD CS issuance","status":"pending"},
+        {"id":"client","label":"Certificate install","status":"pending"},
+        {"id":"radius","label":"EAP-TLS policy","status":"pending"},
+        {"id":"network","label":"Network access","status":"pending"}
+      ],
+      "events": [
+        {"id":"native-01","atUtc":"1970-01-01T12:00:01Z","source":"Active Directory","stage":"directory","status":"success","title":"Computer identity resolved","detail":"The machine account exists and its group memberships define which certificate policy may apply.","fields":{"computer":"CLIENT-001$","organizational unit":"OU=Endpoints,DC=example,DC=test","groups":"Domain Computers; Certificate Autoenroll"}},
+        {"id":"native-02","atUtc":"1970-01-01T12:00:04Z","source":"Windows policy","stage":"policy","status":"success","title":"Computer policy checked in","detail":"The endpoint processed computer policy and discovered the enterprise enrollment policy.","fields":{"policy source":"Active Directory","auto-enrollment":"enabled","template":"Example Computer"}},
+        {"id":"native-03","atUtc":"1970-01-01T12:00:07Z","source":"Windows CertEnroll","stage":"policy","status":"active","title":"Native enrollment submitted","detail":"Windows generated a nonexportable key and submitted a PKCS#10 request directly to the enterprise CA.","fields":{"key provider":"Microsoft Software Key Storage Provider","key export":"denied","request type":"PKCS#10"}},
+        {"id":"native-04","atUtc":"1970-01-01T12:00:10Z","source":"AD CS","stage":"ca","status":"success","title":"Template policy accepted","detail":"AD CS authorized the requester against the certificate template and issued one certificate.","fields":{"request ID":"1001","disposition":"issued","template":"Example Computer"}},
+        {"id":"native-05","atUtc":"1970-01-01T12:00:12Z","source":"Windows certificate store","stage":"client","status":"success","title":"Machine certificate installed","detail":"The issued certificate is linked to the locally generated nonexportable private key.","fields":{"subject":"CN=CLIENT-001","EKU":"Client Authentication","private key":"present, nonexportable"}},
+        {"id":"native-06","atUtc":"1970-01-01T12:00:18Z","source":"Access point","stage":"network","status":"active","title":"802.1X authentication started","detail":"The access point relayed the endpoint EAPOL exchange to RADIUS.","fields":{"station":"02:00:00:00:01:01","method":"EAP-TLS","SSID":"Corporate"}},
+        {"id":"native-07","atUtc":"1970-01-01T12:00:20Z","source":"FreeRADIUS","stage":"radius","status":"warning","title":"Certificate valid; intent still external","detail":"The certificate proves machine identity, but its standard fields do not carry stable business intent. RADIUS must consult names, groups or another mapping.","fields":{"certificate":"valid","identity":"host/CLIENT-001.example.test","supplementary lookup":"directory group → VLAN mapping"}},
+        {"id":"native-08","atUtc":"1970-01-01T12:00:22Z","source":"FreeRADIUS","stage":"radius","status":"success","title":"Access-Accept returned","detail":"The external mapping selected the engineering network policy.","fields":{"decision":"Access-Accept","VLAN":"300","policy":"directory-group-engineering"}},
+        {"id":"native-09","atUtc":"1970-01-01T12:00:24Z","source":"Network controller","stage":"network","status":"success","title":"Endpoint admitted to VLAN 300","detail":"The controller applied the RADIUS result and the endpoint joined the assigned network.","fields":{"station":"02:00:00:00:01:01","VLAN":"300","authorization":"RADIUS"}}
+      ]
+    },
+    {
+      "id": "broker",
+      "label": "To-be · broker + facts",
+      "summary": "The broker authenticates the same endpoint, resolves authoritative facts, controls certificate claims and records the transaction. RADIUS evaluates stable signed claims without depending on a live directory or CMDB lookup during authentication.",
+      "stages": [
+        {"id":"directory","label":"AD identity","status":"pending"},
+        {"id":"broker","label":"Broker policy","status":"pending"},
+        {"id":"facts","label":"Facts API","status":"pending"},
+        {"id":"ca","label":"Signer & AD CS","status":"pending"},
+        {"id":"client","label":"Certificate install","status":"pending"},
+        {"id":"radius","label":"Claim policy","status":"pending"},
+        {"id":"network","label":"Network access","status":"pending"}
+      ],
+      "events": [
+        {"id":"broker-01","atUtc":"1970-01-01T12:10:01Z","source":"Active Directory","stage":"directory","status":"success","title":"Computer identity authenticated","detail":"The broker binds the mutual Kerberos identity to the current directory computer object.","fields":{"computer":"CLIENT-001$","channel binding":"verified","directory authorization":"allowed"}},
+        {"id":"broker-02","atUtc":"1970-01-01T12:10:03Z","source":"Broker XCEP","stage":"broker","status":"success","title":"One controlled policy returned","detail":"Windows receives a native enrollment policy whose subject and SAN values remain broker-authoritative.","fields":{"policy":"broker computer","templates returned":"1","minimum key size":"2048"}},
+        {"id":"broker-03","atUtc":"1970-01-01T12:10:05Z","source":"Facts connector","stage":"facts","status":"active","title":"Authoritative facts queried","detail":"The broker sends immutable device identity to the configured source-of-truth connector and validates the bounded response.","fields":{"lookup key":"asset-client-001","connector mode":"live with cache","response revision":"42"}},
+        {"id":"broker-04","atUtc":"1970-01-01T12:10:06Z","source":"Facts API","stage":"facts","status":"success","title":"Stable intent resolved","detail":"The response maps typed source data into the approved certificate fact vocabulary.","fields":{"class":"workstation","use case":"engineering","location":"head-office","management domain":"corporate"}},
+        {"id":"broker-05","atUtc":"1970-01-01T12:10:09Z","source":"Broker WSTEP","stage":"broker","status":"success","title":"CSR and key possession validated","detail":"The broker validates the native request, binds its SPKI to the authenticated device and constructs the authoritative subject and SAN set.","fields":{"CSR":"valid","SPKI binding":"verified","facts revision":"42"}},
+        {"id":"broker-06","atUtc":"1970-01-01T12:10:11Z","source":"Isolated signer","stage":"ca","status":"success","title":"Restricted CA request signed","detail":"The networkless signer authorizes only the bounded request shape required by the restricted AD CS template.","fields":{"provider":"PKCS#11","operation":"RSA PKCS#1 SHA-256","network":"none"}},
+        {"id":"broker-07","atUtc":"1970-01-01T12:10:13Z","source":"AD CS","stage":"ca","status":"success","title":"Broker-controlled certificate issued","detail":"AD CS issued one certificate using the restricted broker template.","fields":{"request ID":"1002","disposition":"issued","template":"Broker Computer"}},
+        {"id":"broker-08","atUtc":"1970-01-01T12:10:15Z","source":"Windows certificate store","stage":"client","status":"success","title":"Certificate installed with signed facts","detail":"Windows retains its nonexportable key; the certificate now carries the broker-approved fact URI SANs.","fields":{"private key":"present, nonexportable","use-case claim":"engineering","facts revision":"42"}},
+        {"id":"broker-09","atUtc":"1970-01-01T12:10:20Z","source":"FreeRADIUS","stage":"radius","status":"success","title":"Signed use-case claim accepted","detail":"RADIUS validates the chain and revocation state, then maps the signed use-case claim directly to local policy.","fields":{"certificate":"valid","claim":"use-case:engineering","external lookup":"none"}},
+        {"id":"broker-10","atUtc":"1970-01-01T12:10:21Z","source":"FreeRADIUS","stage":"radius","status":"success","title":"Access-Accept returned","detail":"The locally governed claim mapping selected the engineering network.","fields":{"decision":"Access-Accept","VLAN":"300","policy":"signed-use-case-engineering"}},
+        {"id":"broker-11","atUtc":"1970-01-01T12:10:23Z","source":"Network controller","stage":"network","status":"success","title":"Endpoint admitted to VLAN 300","detail":"The same network result is reached without a live identity-system lookup in the authentication path.","fields":{"station":"02:00:00:00:01:01","VLAN":"300","authorization":"RADIUS signed-claim policy"}}
+      ]
+    }
+  ]
+}

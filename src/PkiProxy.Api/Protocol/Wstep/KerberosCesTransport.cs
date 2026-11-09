@@ -85,7 +85,7 @@ internal static class KerberosCesTransport
                 var length = await stream.ReadAsync(buffer, deadline.Token);
                 if (length == 0) break;
                 if (body.Length + length > 1_048_576) throw new InvalidDataException("CES response too large.");
-                body.Write(buffer, 0, length);
+                await body.WriteAsync(buffer.AsMemory(0, length), deadline.Token);
             }
             return new(response.StatusCode, body.ToArray());
         }

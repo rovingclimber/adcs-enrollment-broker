@@ -20,10 +20,6 @@ internal sealed class KerberosComputerIdentity
             ? new(account!) : null;
     }
 
-    internal static KerberosComputerIdentity? FromAuthenticatedPeerName(
-        string peerName, string dnsRealm, string netBiosDomain) =>
-        TryParseAccountName(peerName, dnsRealm, netBiosDomain, out var account) ? new(account!) : null;
-
     public static KerberosComputerIdentity? FromContext(
         NegotiateAuthentication context, string dnsRealm, string netBiosDomain)
     {
@@ -35,6 +31,10 @@ internal sealed class KerberosComputerIdentity
         return TryParseAccountName(context.RemoteIdentity.Name, dnsRealm, netBiosDomain, out var account)
             ? new(account!) : null;
     }
+
+    internal static KerberosComputerIdentity? FromAuthenticatedPeerName(
+        string peerName, string dnsRealm, string netBiosDomain) =>
+        TryParseAccountName(peerName, dnsRealm, netBiosDomain, out var account) ? new(account!) : null;
 
     // Parsing alone is NOT authentication. Kept separate to test hostile names
     // without manufacturing fake authenticated security contexts.

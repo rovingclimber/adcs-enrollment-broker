@@ -29,10 +29,13 @@ internal sealed class BrokerReadinessCheck(Func<CancellationToken, Task<bool>>? 
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        stopped.Cancel();
+        await stopped.CancelAsync();
         if (refreshLoop is not null)
             try { await refreshLoop.WaitAsync(cancellationToken); }
-            catch (OperationCanceledException) when (stopped.IsCancellationRequested || cancellationToken.IsCancellationRequested) { }
+            catch (OperationCanceledException) when (stopped.IsCancellationRequested || cancellationToken.IsCancellationRequested)
+            {
+                // Both cancellation sources indicate that the host is stopping.
+            }
     }
 
     internal async Task RefreshAsync(CancellationToken cancellationToken = default)
@@ -64,7 +67,10 @@ internal sealed class BrokerReadinessCheck(Func<CancellationToken, Task<bool>>? 
             while (await timer.WaitForNextTickAsync(cancellationToken))
                 await RefreshAsync(cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Timer cancellation is the normal exit from the background loop.
+        }
     }
 
     public void Dispose() { stopped.Cancel(); stopped.Dispose(); slot.Dispose(); }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.Versioning;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authentication;
 using PkiProxy.Authentication;
 using PkiProxy.Domain;
@@ -31,6 +32,9 @@ internal static class BootstrapEnrollmentWorkflowTests
                    "deviceClass":"workstation","useCase":"engineering","location":"lab","managementDomain":"workgroup"}]}
                 """);
             var assets = await JsonFileImmutableAssetCatalog.LoadAsync(factsPath);
+            const string assetId = "asset-physical-001";
+            const string approvedHost = "workgroup-001.example.test";
+            const string renamedHost = "replacement.example.test";
             var now = DateTimeOffset.Parse("2026-09-19T12:00:00Z");
             using var key = RSA.Create(2048);
             var csr = new CertificateRequest("CN=UNTRUSTED", key, HashAlgorithmName.SHA256,
@@ -43,11 +47,12 @@ internal static class BootstrapEnrollmentWorkflowTests
                 checks++;
             }
 
-            BootstrapEnrollmentWorkflow Workflow() => new(
-                new FileBootstrapEnrollmentTransactionStore(transactionsPath),
-                new FileBootstrapPairingCoordinator(pairingsPath,
-                    new FileBootstrapAttestationStore(attestationsPath), assets,
-                    new BootstrapPairingPolicy(TimeSpan.FromMinutes(10), 3, 16, TimeSpan.FromMinutes(5))),
+            FileBootstrapPairingCoordinator Pairings(IImmutableAssetCatalog catalogue) => new(
+                pairingsPath, new FileBootstrapAttestationStore(attestationsPath), catalogue,
+                new BootstrapPairingPolicy(TimeSpan.FromMinutes(10), 3, 16, TimeSpan.FromMinutes(5)));
+
+            BootstrapEnrollmentWorkflow Workflow(IImmutableAssetCatalog? catalogue = null) => new(
+                new FileBootstrapEnrollmentTransactionStore(transactionsPath), Pairings(catalogue ?? assets),
                 new FileBootstrapIntakeLedger(intakePath,
                     new BootstrapIntakeQuota(16, 20 * 1024 * 1024, 64, 80 * 1024 * 1024)),
                 new BootstrapTechnicianAuthenticator(new BootstrapTechnicianAuthenticationPolicy(
@@ -136,8 +141,8 @@ internal static class BootstrapEnrollmentWorkflowTests
                     TransactionResult: BootstrapTransactionResult.AssetBound, Audit: not null } &&
                 approved.Audit.RequestId == id && approved.Audit.AuthoritativeAssetId == "asset-physical-001",
                 "authenticated technician binds the audited asset to the same transaction");
-            Check(approved.Audit!.Capability == "bootstrap-approve",
-                "durable pairing audit binds the approval capability");
+            Check(approved.Audit is { Capability: "bootstrap-approve", ApprovedDnsHostName: approvedHost },
+                "durable pairing audit binds the approval capability and catalogue hostname");
             Check(transaction.Lookup(id, binding, "asset-physical-001", now.AddMinutes(1)).State ==
                 BootstrapTransactionState.AssetBound,
                 "approval stops before any submission claim or CA operation");
@@ -169,6 +174,57 @@ internal static class BootstrapEnrollmentWorkflowTests
                 throw new InvalidOperationException("Malformed shared ID accepted.");
             }
             catch (ArgumentException) { checks++; }
+
+            var factsBefore = await File.ReadAllTextAsync(factsPath);
+            await File.WriteAllTextAsync(factsPath, factsBefore.Replace(approvedHost, renamedHost, StringComparison.Ordinal));
+            var replacementCatalogue = await JsonFileImmutableAssetCatalog.LoadAsync(factsPath);
+            Check(replacementCatalogue.FindDnsHostName(assetId) == renamedHost,
+                "replacement catalogue has a different hostname for the same asset");
+
+            foreach (var legacy in new[] { false, true })
+            {
+                using var retryKey = RSA.Create(2048);
+                var retryCsr = new CertificateRequest("CN=UNTRUSTED", retryKey, HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pkcs1).CreateSigningRequest();
+                var retryTicket = Workflow().Begin(retryCsr, now).Ticket!;
+                var retryId = retryTicket.RequestId;
+                var durableApproval = Pairings(assets).Approve(retryId, retryTicket.DisplayCode,
+                    assetId, new AuthenticatedTechnician("technician:avery", "webauthn", now), now.AddMinutes(1));
+                Check(durableApproval.Audit?.ApprovedDnsHostName == approvedHost &&
+                    transaction.PrepareSubmission(retryId, now.AddMinutes(1)).State == BootstrapTransactionState.RetainedUnbound,
+                    "approval on the startup catalogue survives a stop before transaction binding");
+
+                if (legacy)
+                {
+                    foreach (var stage in new[] { "claimed", "approved" })
+                    {
+                        var path = Directory.GetFiles(pairingsPath, "*" + retryId + "." + stage + ".json").Single();
+                        var marker = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+                        marker["Version"] = 2;
+                        marker.Remove("ApprovedDnsHostName");
+                        await File.WriteAllTextAsync(path, marker.ToJsonString());
+                    }
+                }
+
+                var recovered = Workflow(replacementCatalogue).Approve(Ticket("technician:avery", now), retryId,
+                    retryTicket.DisplayCode, assetId, now.AddMinutes(2));
+                var state = transaction.PrepareSubmission(retryId, now.AddMinutes(2));
+                if (legacy)
+                {
+                    Check(recovered is { Result: BootstrapWorkflowResult.TransactionRejected,
+                            Audit: { ApprovedDnsHostName: null } } &&
+                        state.State == BootstrapTransactionState.RetainedUnbound &&
+                        Pairings(replacementCatalogue).Lookup(retryId, now.AddMinutes(2)).Status == BootstrapPairingStatus.Approved,
+                        "legacy approval without a hostname remains durable and cannot bind to a replacement catalogue");
+                }
+                else
+                {
+                    Check(recovered is { Result: BootstrapWorkflowResult.Approved,
+                            Audit.ApprovedDnsHostName: approvedHost } &&
+                        state is { State: BootstrapTransactionState.AssetBound, ApprovedDnsHostName: approvedHost },
+                        "reopened approval binds the original hostname after catalogue replacement");
+                }
+            }
 
             Console.WriteLine($"Bootstrap enrollment workflow checks passed ({checks}).");
         }

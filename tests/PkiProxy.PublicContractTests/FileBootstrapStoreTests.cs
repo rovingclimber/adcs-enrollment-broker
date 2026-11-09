@@ -78,7 +78,8 @@ internal static class FileBootstrapStoreTests
             store.Record(crossProcess, now, TimeSpan.FromMinutes(10));
             store.Attest(crossProcess, "asset-test", now);
             var exits = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => ConsumeInChildAsync(scratch.FullName, crossProcess, now)));
-            Check(exits.Count(code => code == 0) == 1 && exits.Count(code => code == 3) == 3, "one consumer across four fresh processes");
+            Check(exits.Count(code => code == 0) == 1 && exits.Count(code => code == 3) == 3,
+                $"one consumer across four fresh processes (exit codes: {string.Join(", ", exits)})");
             Check(Reopen().GetAttestedAsset(crossProcess, now).Result == BootstrapStoreResult.InvalidState, "child consumption persists after child exit");
             var expired = Binding();
             store.Record(expired, now, TimeSpan.FromMinutes(1));

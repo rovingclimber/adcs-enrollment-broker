@@ -17,6 +17,7 @@ internal static class BootstrapApprovalRequestReader
         PropertyNameCaseInsensitive = false,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         RespectRequiredConstructorParameters = true,
+        AllowDuplicateProperties = false,
         MaxDepth = 2
     };
 

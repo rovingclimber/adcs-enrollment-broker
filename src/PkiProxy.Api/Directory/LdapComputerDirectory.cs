@@ -8,10 +8,11 @@ namespace PkiProxy.Directory;
 // OS credentials/ticket cache; never a delegated device ticket or a password DTO.
 internal sealed class LdapComputerDirectory : IComputerDirectory
 {
+    private const string ObjectGuidAttribute = "objectGUID";
     private readonly string server;
     private readonly string baseDn;
     private readonly Action<string>? observe;
-    private static readonly string[] Attributes = ["objectGUID", "sAMAccountName", "dNSHostName",
+    private static readonly string[] Attributes = [ObjectGuidAttribute, "sAMAccountName", "dNSHostName",
         "userAccountControl", "sAMAccountType", "tokenGroups"];
 
     public LdapComputerDirectory(string server, string baseDn, Action<string>? observe = null)
@@ -45,9 +46,9 @@ internal sealed class LdapComputerDirectory : IComputerDirectory
         cancellationToken.ThrowIfCancellationRequested();
         using var connection = CreateConnection();
         connection.Bind();
-        var initial = Search(connection, baseDn, filter, SearchScope.Subtree, ["objectGUID"], cancellationToken);
+        var initial = Search(connection, baseDn, filter, SearchScope.Subtree, [ObjectGuidAttribute], cancellationToken);
         if (initial is null) { observe?.Invoke("no-unique-computer"); return null; }
-        var guid = Bytes(initial, "objectGUID");
+        var guid = Bytes(initial, ObjectGuidAttribute);
         if (guid is not { Length: 16 }) { observe?.Invoke("invalid-object-guid"); return null; }
         if (expectedObject.HasValue && new Guid(guid) != expectedObject.Value)
         { observe?.Invoke("object-guid-mismatch"); return null; }
@@ -55,7 +56,7 @@ internal sealed class LdapComputerDirectory : IComputerDirectory
         // the exact GUID as well as DN, so delete/recreate cannot switch objects.
         var boundFilter = "(&(objectClass=computer)(objectGUID=" + EscapeBinary(guid) + "))";
         var entry = Search(connection, initial.DistinguishedName, boundFilter, SearchScope.Base, Attributes, cancellationToken);
-        if (entry is null || !guid.AsSpan().SequenceEqual(Bytes(entry, "objectGUID")))
+        if (entry is null || !guid.AsSpan().SequenceEqual(Bytes(entry, ObjectGuidAttribute)))
         { observe?.Invoke("object-bound-read-failed"); return null; }
         var groups = entry.Attributes["tokenGroups"];
         if (groups is null || groups.Count is 0 or > 1024 ||

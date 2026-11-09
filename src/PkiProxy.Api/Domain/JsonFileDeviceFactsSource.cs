@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -43,6 +44,10 @@ internal sealed class JsonFileDeviceFactsSource : IDomainDeviceFactsSource, IAut
     internal async Task ValidateAsync(CancellationToken cancellationToken) =>
         _ = await ValidatedDeviceFactsSnapshot.LoadAsync(path, cancellationToken);
 
+    internal Task<(ValidatedDeviceFactsSnapshot Snapshot, DateTimeOffset LastWriteTime)>
+        LoadSnapshotWithWriteTimeAsync(CancellationToken cancellationToken) =>
+        ValidatedDeviceFactsSnapshot.LoadWithWriteTimeAsync(path, cancellationToken);
+
     private async ValueTask<AuthoritativeDeviceFacts?> ReadAsync(string? dnsHostName, CancellationToken cancellationToken)
     {
         var snapshot = await ValidatedDeviceFactsSnapshot.LoadAsync(path, cancellationToken);
@@ -55,12 +60,12 @@ internal sealed class JsonFileDeviceFactsSource : IDomainDeviceFactsSource, IAut
 
 internal sealed class JsonFileImmutableAssetCatalog : IImmutableAssetCatalog
 {
-    private readonly FrozenSet<string> assetIds;
+    private readonly FrozenDictionary<string, string> assetHostnames;
 
     private JsonFileImmutableAssetCatalog(ValidatedDeviceFactsSnapshot snapshot)
     {
         SourceRevision = snapshot.Revision;
-        assetIds = snapshot.EnumerateAssetIds().ToFrozenSet(StringComparer.Ordinal);
+        assetHostnames = snapshot.EnumerateAssetHostnames().ToFrozenDictionary(StringComparer.Ordinal);
     }
 
     internal long SourceRevision { get; }
@@ -70,7 +75,10 @@ internal sealed class JsonFileImmutableAssetCatalog : IImmutableAssetCatalog
         CancellationToken cancellationToken = default) =>
         new(await ValidatedDeviceFactsSnapshot.LoadAsync(path, cancellationToken));
 
-    public bool Contains(string authoritativeAssetId) => assetIds.Contains(authoritativeAssetId);
+    public bool Contains(string authoritativeAssetId) => assetHostnames.ContainsKey(authoritativeAssetId);
+
+    public string? FindDnsHostName(string authoritativeAssetId) =>
+        assetHostnames.GetValueOrDefault(authoritativeAssetId);
 }
 
 // One validated document image backs both hostname facts lookup and immutable
@@ -103,20 +111,31 @@ internal sealed class ValidatedDeviceFactsSnapshot
     }
 
     internal static async Task<ValidatedDeviceFactsSnapshot> LoadAsync(
+        string path, CancellationToken cancellationToken) =>
+        (await LoadCoreAsync(path, captureWriteTime: false, cancellationToken)).Snapshot;
+
+    internal static Task<(ValidatedDeviceFactsSnapshot Snapshot, DateTimeOffset LastWriteTime)> LoadWithWriteTimeAsync(
+        string path, CancellationToken cancellationToken) =>
+        LoadCoreAsync(path, captureWriteTime: true, cancellationToken);
+
+    private static async Task<(ValidatedDeviceFactsSnapshot Snapshot, DateTimeOffset LastWriteTime)> LoadCoreAsync(
         string path,
+        bool captureWriteTime,
         CancellationToken cancellationToken)
     {
         path = RequireAbsolutePath(path);
         cancellationToken.ThrowIfCancellationRequested();
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
             FileShare.Read | FileShare.Delete, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        DateTimeOffset lastWriteTime = captureWriteTime ? File.GetLastWriteTimeUtc(stream.SafeFileHandle) : default;
         if (stream.Length is 0 or > MaximumBytes)
             throw new InvalidDataException("Unsupported device facts file size.");
         var bytes = new byte[(int)stream.Length];
         await stream.ReadExactlyAsync(bytes, cancellationToken);
-        if (await stream.ReadAsync(new byte[1], cancellationToken) != 0)
+        if (await stream.ReadAsync(new byte[1], cancellationToken) != 0 ||
+            (captureWriteTime && File.GetLastWriteTimeUtc(stream.SafeFileHandle) != lastWriteTime.UtcDateTime))
             throw new InvalidDataException("Facts file changed during read; publish edits by atomic replacement.");
-        return Parse(bytes);
+        return (Parse(bytes), lastWriteTime);
     }
 
     internal static ValidatedDeviceFactsSnapshot Parse(ReadOnlyMemory<byte> utf8)
@@ -132,32 +151,40 @@ internal sealed class ValidatedDeviceFactsSnapshot
             if (data.SchemaVersion != 1 || data.Revision < 1 || data.Devices is null || data.Devices.Length > 1000 ||
                 data.UseCases is null || data.UseCases.Length is 0 or > 100)
                 throw new InvalidDataException("Unsupported device facts schema, revision or record count.");
-            var useCases = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var useCase in data.UseCases)
-            {
-                if (useCase is null || !IsValue(useCase.Id) || !IsValue(useCase.Label) || !useCases.Add(useCase.Id))
-                    throw new InvalidDataException("Invalid or duplicate use-case definition.");
-            }
-            var hosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var assets = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var device in data.Devices)
-            {
-                if (device is null || !IsHostname(device.Hostname) || !hosts.Add(device.Hostname) ||
-                    !IsValue(device.AssetId) || !assets.Add(device.AssetId) || !IsValue(device.DeviceClass) ||
-                    !IsValue(device.Location) || !IsValue(device.ManagementDomain) || device.UseCase is null ||
-                    !useCases.Contains(device.UseCase))
-                    throw new InvalidDataException("Invalid, ambiguous or unclassified device facts record.");
-            }
+            if (data.UseCases.Any(useCase => useCase is null || !IsValue(useCase.Id) || !IsValue(useCase.Label)))
+                throw new InvalidDataException("Invalid or duplicate use-case definition.");
+            var useCases = data.UseCases.Select(useCase => useCase.Id).ToHashSet(StringComparer.Ordinal);
+            if (useCases.Count != data.UseCases.Length)
+                throw new InvalidDataException("Invalid or duplicate use-case definition.");
+            if (data.Devices.Any(device => device is null || !IsHostname(device.Hostname) ||
+                    !IsValue(device.AssetId) || !IsValue(device.DeviceClass) || !IsValue(device.Location) ||
+                    !IsValue(device.ManagementDomain) || device.UseCase is null || !useCases.Contains(device.UseCase)) ||
+                data.Devices.Select(device => device.Hostname).Distinct(StringComparer.OrdinalIgnoreCase).Count() != data.Devices.Length ||
+                data.Devices.Select(device => device.AssetId).Distinct(StringComparer.Ordinal).Count() != data.Devices.Length)
+                throw new InvalidDataException("Invalid, ambiguous or unclassified device facts record.");
+            ValidateDirectoryBindings(data.Devices);
             return new(data.Revision, data.Devices);
         }
         catch (JsonException exception)
         { throw new InvalidDataException("Invalid device facts JSON.", exception); }
     }
 
-    internal IEnumerable<string> EnumerateAssetIds()
+    private static void ValidateDirectoryBindings(IEnumerable<Device> devices)
     {
-        foreach (var device in devices) yield return device.AssetId;
+        var boundIds = devices.Select(device => device.DirectoryObjectId).Where(id => id.HasValue).ToArray();
+        if (boundIds.Contains(Guid.Empty) || boundIds.Distinct().Count() != boundIds.Length)
+            throw new InvalidDataException("Invalid or duplicate directory object binding.");
     }
+
+    internal IEnumerable<KeyValuePair<string, string>> EnumerateAssetHostnames() =>
+        devices.Select(device => KeyValuePair.Create(device.AssetId, device.Hostname));
+
+    internal bool HasSameDirectoryBindings(ValidatedDeviceFactsSnapshot other) =>
+        DirectoryBindings().ToHashSet().SetEquals(other.DirectoryBindings());
+
+    private IEnumerable<(Guid? ObjectId, string AssetId, string Hostname)> DirectoryBindings() =>
+        devices.Where(device => device.DirectoryObjectId.HasValue)
+            .Select(device => (device.DirectoryObjectId, device.AssetId, device.Hostname.ToUpperInvariant()));
 
     internal AuthoritativeDeviceFacts? FindByDnsHostName(string? dnsHostName)
     {
@@ -177,10 +204,10 @@ internal sealed class ValidatedDeviceFactsSnapshot
 
     private AuthoritativeDeviceFacts Facts(Device selected) => new(selected.AssetId, string.Empty,
         selected.DeviceClass, selected.UseCase, selected.Location, selected.ManagementDomain,
-        Revision, selected.Hostname);
+        Revision, selected.Hostname) { DirectoryObjectId = selected.DirectoryObjectId };
 
     private static bool IsValue(string? value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256 && !value.Any(char.IsControl);
-    private static bool IsHostname(string? value) => value is { Length: > 0 and <= 253 } && value.Contains('.') &&
+    internal static bool IsHostname([NotNullWhen(true)] string? value) => value is { Length: > 0 and <= 253 } && value.Contains('.') &&
         value.Split('.').All(label => label.Length is > 0 and <= 63 && label[0] != '-' && label[^1] != '-' &&
             label.All(c => char.IsAsciiLetterOrDigit(c) || c == '-'));
     private static void RejectDuplicateProperties(JsonElement element)
@@ -201,5 +228,5 @@ internal sealed class ValidatedDeviceFactsSnapshot
     private sealed record FactsFile(int SchemaVersion, long Revision, UseCase[] UseCases, Device[] Devices);
     private sealed record UseCase(string Id, string Label);
     private sealed record Device(string Hostname, string AssetId, string DeviceClass, string UseCase,
-        string Location, string ManagementDomain);
+        string Location, string ManagementDomain, Guid? DirectoryObjectId = null);
 }

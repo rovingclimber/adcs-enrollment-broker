@@ -43,7 +43,7 @@ internal sealed record BootstrapTransactionLookup(BootstrapTransactionResult Res
 internal sealed record BootstrapIssuedResponse(byte[] CertificateDer, byte[] FullPkiResponseDer, string RequestId);
 internal sealed record BootstrapSubmissionPreparation(BootstrapTransactionResult Result, BootstrapTransactionState? State,
     string? AssetId = null, CsrBinding? Binding = null, byte[]? CsrDer = null,
-    BootstrapIssuedResponse? IssuedResponse = null);
+    BootstrapIssuedResponse? IssuedResponse = null, string? ApprovedDnsHostName = null);
 
 // Linux-local source-only component. The caller must validate the PKCS#10 request
 // before retention. Every lifecycle transition is a create-once durable marker.
@@ -52,6 +52,9 @@ internal sealed record BootstrapSubmissionPreparation(BootstrapTransactionResult
 // All times must come from the trusted service clock, never the client.
 internal sealed class FileBootstrapEnrollmentTransactionStore
 {
+    private const string LinuxRequiredMessage = "Linux local transaction store required.";
+    private const string IssuedKind = "issued";
+    private const string TransactionFilePrefix = "bootstrap-";
     internal const int MaximumCsrBytes = 65_536;
     private const int MaximumJsonBytes = 16_384;
     private const int MaximumCertificateBytes = 65_536;
@@ -68,7 +71,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     internal FileBootstrapEnrollmentTransactionStore(string directory)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         if (!Path.IsPathFullyQualified(directory)) throw new ArgumentException("Absolute transaction directory required.");
         var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
         if (!string.Equals(normalized, Path.TrimEndingDirectorySeparator(directory), StringComparison.Ordinal))
@@ -122,7 +125,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
     }
 
     internal BootstrapTransactionResult BindAsset(string transactionId, CsrBinding binding,
-        string authoritativeAssetId, DateTimeOffset now)
+        string authoritativeAssetId, string? approvedDnsHostName, DateTimeOffset now)
     {
         ValidateAsset(authoritativeAssetId);
         var loaded = Load(transactionId, binding);
@@ -133,16 +136,14 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
         if (now >= retained.ExpiresAt) return BootstrapTransactionResult.Expired;
         if (HasSubmissionState(transactionId)) return BootstrapTransactionResult.InvalidState;
         if (loaded.Asset is not null)
-        {
-            if (loaded.Asset.AssetId != authoritativeAssetId) return BootstrapTransactionResult.Conflict;
-            // A concurrent creator may have linked its fsynced file but not yet
-            // flushed the directory. Reconciliation must also be durable.
-            SyncDirectory();
-            return BootstrapTransactionResult.AlreadyBound;
-        }
+            return ReconcileAssetBinding(loaded.Asset, authoritativeAssetId, approvedDnsHostName);
 
-        var asset = new AssetRecord(1, transactionId, retained.CsrSha256, retained.SpkiSha256,
-            authoritativeAssetId, now);
+        // An old approval can reconcile an existing legacy binding, but it
+        // cannot create new issuance authority.
+        if (!ValidatedDeviceFactsSnapshot.IsHostname(approvedDnsHostName))
+            return BootstrapTransactionResult.InvalidState;
+        var asset = new AssetRecord(2, transactionId, retained.CsrSha256, retained.SpkiSha256,
+            authoritativeAssetId, now, approvedDnsHostName);
         if (CreateJson(AssetName(transactionId), asset)) return BootstrapTransactionResult.AssetBound;
         // Another caller published a complete marker. Re-read all durable inputs;
         // an exact replay reconciles the winner but never creates another binding.
@@ -151,13 +152,21 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             throw new InvalidDataException("Asset binding is incomplete and requires reconciliation.");
         if (now < existing.Asset.BoundAt || HasSubmissionState(transactionId))
             return BootstrapTransactionResult.InvalidState;
-        if (existing.Asset.AssetId != authoritativeAssetId) return BootstrapTransactionResult.Conflict;
+        return ReconcileAssetBinding(existing.Asset, authoritativeAssetId, approvedDnsHostName);
+    }
+
+    private BootstrapTransactionResult ReconcileAssetBinding(AssetRecord asset,
+        string authoritativeAssetId, string? approvedDnsHostName)
+    {
+        if (!MatchesApproval(asset, authoritativeAssetId, approvedDnsHostName))
+            return BootstrapTransactionResult.Conflict;
+        // The winner may have linked its fsynced file before flushing the directory.
         SyncDirectory();
         return BootstrapTransactionResult.AlreadyBound;
     }
 
     internal BootstrapTransactionClaimResult TryClaimSubmission(string transactionId, CsrBinding binding,
-        string assetId, DateTimeOffset now)
+        string assetId, string approvedDnsHostName, DateTimeOffset now)
     {
         ValidateAsset(assetId);
         var loaded = Load(transactionId, binding);
@@ -165,16 +174,16 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             return new(loaded.Result, null);
         if (now < loaded.Record!.CreatedAt)
             return new(BootstrapTransactionResult.InvalidState, null);
-        if (now >= loaded.Record!.ExpiresAt)
+        if (now >= loaded.Record.ExpiresAt)
             return new(BootstrapTransactionResult.Expired, null);
-        if (loaded.Asset is null || now < loaded.Asset.BoundAt)
+        if (loaded.Asset?.ApprovedDnsHostName is null || now < loaded.Asset.BoundAt)
             return new(BootstrapTransactionResult.InvalidState, null);
-        if (loaded.Asset.AssetId != assetId)
+        if (!MatchesApproval(loaded.Asset, assetId, approvedDnsHostName))
             return new(BootstrapTransactionResult.BindingMismatch, null);
         if (ExistsChecked(PendingName(transactionId)) || ExistsChecked(TerminalName(transactionId)))
             return new(BootstrapTransactionResult.InvalidState, null);
-        var transition = new ClaimRecord(1, transactionId, loaded.Record.CsrSha256,
-            loaded.Record.SpkiSha256, assetId, loaded.Asset.BoundAt, now);
+        var transition = new ClaimRecord(2, transactionId, loaded.Record.CsrSha256,
+            loaded.Record.SpkiSha256, assetId, loaded.Asset.BoundAt, now, approvedDnsHostName);
         if (!CreateJson(ClaimedName(transactionId), transition))
         {
             var existing = ReadJson<ClaimRecord>(ClaimedName(transactionId));
@@ -221,10 +230,10 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
                 ValidatePending(pending, retained);
                 if (pending.RecordedAt < claim.ClaimedAt || terminal.RecordedAt < pending.RecordedAt)
                     throw new InvalidDataException("Invalid pending-to-terminal chronology.");
-                if (terminal.Kind == "issued" && pending.IssuerRequestId != terminal.IssuerRequestId)
+                if (terminal.Kind == IssuedKind && pending.IssuerRequestId != terminal.IssuerRequestId)
                     throw new InvalidDataException("Issued result conflicts with pending issuer request.");
             }
-            if (terminal.Kind == "issued")
+            if (terminal.Kind == IssuedKind)
             {
                 if (terminal.Version == 2) _ = ReadIssuedResponse(retained, terminal);
                 return new(BootstrapTransactionResult.Recorded, BootstrapTransactionState.Issued,
@@ -265,13 +274,19 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
     // Recovery uses the immutable asset marker directly because an otherwise
     // valid binding is reported as expired after the anonymous lifetime. It
     // must not infer trust from pairing approval alone.
-    internal bool HasDurableAssetBinding(string transactionId, CsrBinding binding, string assetId)
+    internal bool HasDurableAssetBinding(string transactionId, CsrBinding binding, string assetId,
+        string? approvedDnsHostName)
     {
         ValidateAsset(assetId);
         var loaded = Load(transactionId, binding);
         if (loaded.Result != BootstrapTransactionResult.Recorded) return false;
-        return loaded.Asset?.AssetId == assetId;
+        return loaded.Asset is not null && MatchesApproval(loaded.Asset, assetId, approvedDnsHostName);
     }
+
+    // Durable markers copy the audit spelling exactly. DNS equivalence applies
+    // when comparing the approved name to current facts.
+    private static bool MatchesApproval(AssetRecord asset, string assetId, string? approvedDnsHostName) =>
+        asset.AssetId == assetId && asset.ApprovedDnsHostName == approvedDnsHostName;
 
     // Internal status/issuance correlation uses the opaque 128-bit transaction
     // identifier. It never accepts the six-digit display aid or client facts.
@@ -289,7 +304,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             if (terminal.Version == 2) issued = ReadIssuedResponse(loaded.Record!, terminal);
         }
         return new(lookup.Result, lookup.State, loaded.Asset?.AssetId, binding,
-            loaded.CsrBytes?.ToArray(), issued);
+            loaded.CsrBytes?.ToArray(), issued, loaded.Asset?.ApprovedDnsHostName);
     }
 
     // Called only while the process-shared intake lock is held. It removes an
@@ -399,7 +414,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             if (pending.IssuerRequestId != issuerRequestId) throw new InvalidOperationException("Issued result conflicts with pending request.");
             if (now < pending.RecordedAt) throw new ArgumentOutOfRangeException(nameof(now), "Issued outcome cannot predate pending state.");
         }
-        var record = new TerminalRecord(1, retained.TransactionId, "issued", issuerRequestId,
+        var record = new TerminalRecord(1, retained.TransactionId, IssuedKind, issuerRequestId,
             certificateSha256.ToUpperInvariant(), serialHex.ToUpperInvariant(), null, now);
         if (!CreateJson(TerminalName(retained.TransactionId), record))
             throw new InvalidOperationException("Terminal outcome was already recorded.");
@@ -434,7 +449,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             ArgumentOutOfRangeException.ThrowIfLessThan(now, pending.RecordedAt);
         }
         CreateJsonRequired(TerminalName(retained.TransactionId), new TerminalRecord(2,
-            retained.TransactionId, "issued", issuerRequestId, certificateHash, serial, null, now));
+            retained.TransactionId, IssuedKind, issuerRequestId, certificateHash, serial, null, now));
     }
 
     private BootstrapIssuedResponse ReadIssuedResponse(RetainedRecord retained, TerminalRecord terminal)
@@ -498,15 +513,18 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private static void ValidateAssetRecord(AssetRecord value, RetainedRecord retained)
     {
-        if (value.Version != 1 || value.TransactionId != retained.TransactionId || !IsAsset(value.AssetId) ||
+        if (value.Version is not 1 and not 2 || value.TransactionId != retained.TransactionId || !IsAsset(value.AssetId) ||
             value.CsrSha256 != retained.CsrSha256 || value.SpkiSha256 != retained.SpkiSha256 ||
             value.BoundAt < retained.CreatedAt || value.BoundAt >= retained.ExpiresAt)
             throw new InvalidDataException("Invalid immutable asset binding record.");
+        if (value.Version == 2 && !ValidatedDeviceFactsSnapshot.IsHostname(value.ApprovedDnsHostName))
+            throw new InvalidDataException("Asset binding requires an approved hostname.");
     }
 
     private static void ValidateClaim(ClaimRecord value, RetainedRecord retained, AssetRecord asset)
     {
-        if (value.Version != 1 || value.TransactionId != retained.TransactionId || value.AssetId != asset.AssetId ||
+        if (value.Version != asset.Version || value.TransactionId != retained.TransactionId ||
+            !MatchesApproval(asset, value.AssetId, value.ApprovedDnsHostName) ||
             value.CsrSha256 != retained.CsrSha256 || value.SpkiSha256 != retained.SpkiSha256 ||
             value.AssetBoundAt != asset.BoundAt || value.ClaimedAt < asset.BoundAt || value.ClaimedAt >= retained.ExpiresAt)
             throw new InvalidDataException("Invalid submission claim record.");
@@ -521,7 +539,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private static void ValidateTerminal(TerminalRecord value, RetainedRecord retained)
     {
-        var issued = value.Kind == "issued" && value.IssuerRequestId > 0 && IsHash(value.CertificateSha256) &&
+        var issued = value.Kind == IssuedKind && value.IssuerRequestId > 0 && IsHash(value.CertificateSha256) &&
             IsSerial(value.SerialHex) && value.ReasonCode is null;
         var failed = value.Kind == "failed" && value.IssuerRequestId is null && value.CertificateSha256 is null &&
             value.SerialHex is null && IsReason(value.ReasonCode);
@@ -551,9 +569,14 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
             using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 4 });
             if (document.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("JSON record must be an object.");
             var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in document.RootElement.EnumerateObject())
-                if (!names.Add(property.Name)) throw new InvalidDataException("Duplicate JSON property.");
-            return document.RootElement.Deserialize<T>(JsonOptions) ?? throw new InvalidDataException("Missing JSON record.");
+            if (document.RootElement.EnumerateObject().Any(property => !names.Add(property.Name)))
+                throw new InvalidDataException("Duplicate JSON property.");
+            var value = document.RootElement.Deserialize<T>(JsonOptions)
+                ?? throw new InvalidDataException("Missing JSON record.");
+            if ((value is AssetRecord { Version: 1 } or ClaimRecord { Version: 1 }) &&
+                names.Contains(nameof(AssetRecord.ApprovedDnsHostName)))
+                throw new InvalidDataException("Legacy transaction marker carries unexpected hostname authority.");
+            return value;
         }
         catch (JsonException error) { throw new InvalidDataException("Invalid transaction JSON.", error); }
     }
@@ -572,7 +595,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private static FileInfo CheckFile(string path, int maximum)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         var info = new FileInfo(path);
         info.Refresh();
         if (!info.Exists || info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint) ||
@@ -584,7 +607,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private bool CreateJson(string name, object value)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         CheckDirectory();
         var path = Path.Combine(directory, name);
         var stagingPath = Path.Combine(directory,
@@ -616,7 +639,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private void CreateBytesRequired(string name, ReadOnlySpan<byte> value)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         CheckDirectory();
         var path = Path.Combine(directory, name);
         var stagingPath = Path.Combine(directory,
@@ -640,7 +663,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private static FileStream Create(string path)
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         return new(path, new FileStreamOptions
         {
             Mode = System.IO.FileMode.CreateNew,
@@ -653,7 +676,7 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
 
     private void CheckDirectory()
     {
-        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Linux local transaction store required.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException(LinuxRequiredMessage);
         var info = new DirectoryInfo(directory);
         info.Refresh();
         if (!info.Exists || info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint) ||
@@ -690,23 +713,24 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
     private static bool IsTransactionId(string? value) => value is { Length: 32 } && value.All(char.IsAsciiHexDigit);
     private SubmissionClaim NewClaim(RetainedRecord retained, AssetRecord asset, byte[] csr) => new(this, retained.TransactionId,
         asset.AssetId, asset.BoundAt, retained.CsrSha256, retained.SpkiSha256, retained.CsrLength,
-        retained.CreatedAt, retained.ExpiresAt, csr);
-    private static string RetainedName(string id) => "bootstrap-" + id + ".retained.json";
-    private static string CsrName(string id) => "bootstrap-" + id + ".csr";
-    private static string AssetName(string id) => "bootstrap-" + id + ".asset.json";
-    private static string ClaimedName(string id) => "bootstrap-" + id + ".claimed.json";
-    private static string PendingName(string id) => "bootstrap-" + id + ".pending.json";
-    private static string TerminalName(string id) => "bootstrap-" + id + ".terminal.json";
-    private static string CertificateName(string id) => "bootstrap-" + id + ".certificate.der";
-    private static string FullResponseName(string id) => "bootstrap-" + id + ".full-response.der";
-    private static string ReleaseName(string id) => "bootstrap-" + id + ".release.json";
+        retained.CreatedAt, retained.ExpiresAt, csr, asset.ApprovedDnsHostName);
+    private static string RetainedName(string id) => TransactionFilePrefix + id + ".retained.json";
+    private static string CsrName(string id) => TransactionFilePrefix + id + ".csr";
+    private static string AssetName(string id) => TransactionFilePrefix + id + ".asset.json";
+    private static string ClaimedName(string id) => TransactionFilePrefix + id + ".claimed.json";
+    private static string PendingName(string id) => TransactionFilePrefix + id + ".pending.json";
+    private static string TerminalName(string id) => TransactionFilePrefix + id + ".terminal.json";
+    private static string CertificateName(string id) => TransactionFilePrefix + id + ".certificate.der";
+    private static string FullResponseName(string id) => TransactionFilePrefix + id + ".full-response.der";
+    private static string ReleaseName(string id) => TransactionFilePrefix + id + ".release.json";
 
     private sealed record RetainedRecord(int Version, string TransactionId,
         string CsrSha256, string SpkiSha256, int CsrLength, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
     private sealed record AssetRecord(int Version, string TransactionId, string CsrSha256,
-        string SpkiSha256, string AssetId, DateTimeOffset BoundAt);
+        string SpkiSha256, string AssetId, DateTimeOffset BoundAt, string? ApprovedDnsHostName = null);
     private sealed record ClaimRecord(int Version, string TransactionId, string CsrSha256,
-        string SpkiSha256, string AssetId, DateTimeOffset AssetBoundAt, DateTimeOffset ClaimedAt);
+        string SpkiSha256, string AssetId, DateTimeOffset AssetBoundAt, DateTimeOffset ClaimedAt,
+        string? ApprovedDnsHostName = null);
     private sealed record PendingRecord(int Version, string TransactionId, int IssuerRequestId, DateTimeOffset RecordedAt);
     private sealed record TerminalRecord(int Version, string TransactionId, string Kind, int? IssuerRequestId,
         string? CertificateSha256, string? SerialHex, string? ReasonCode, DateTimeOffset RecordedAt);
@@ -724,12 +748,13 @@ internal sealed class FileBootstrapEnrollmentTransactionStore
         private readonly byte[] csr;
         internal SubmissionClaim(FileBootstrapEnrollmentTransactionStore owner, string transactionId,
             string assetId, DateTimeOffset assetBoundAt, string csrSha256, string spkiSha256, int csrLength,
-            DateTimeOffset createdAt, DateTimeOffset expiresAt, byte[] csr)
+            DateTimeOffset createdAt, DateTimeOffset expiresAt, byte[] csr, string? approvedDnsHostName)
         {
             this.owner = owner;
             retained = new RetainedRecord(1, transactionId, csrSha256, spkiSha256,
                 csrLength, createdAt, expiresAt);
-            asset = new AssetRecord(1, transactionId, csrSha256, spkiSha256, assetId, assetBoundAt);
+            asset = new AssetRecord(approvedDnsHostName is null ? 1 : 2, transactionId, csrSha256,
+                spkiSha256, assetId, assetBoundAt, approvedDnsHostName);
             this.csr = csr.ToArray();
         }
         internal byte[] ExportValidatedCsr()

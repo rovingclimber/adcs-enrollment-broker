@@ -1,3 +1,4 @@
+using System.Formats.Asn1;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -66,8 +67,20 @@ internal static class IsolatedSignerHost
                 await HandleAsync(client, signer, token, expectedHash, minutes, allowedClientUid, policy, replay, shutdown.Token);
             }
         }
-        catch (OperationCanceledException) when (shutdown.IsCancellationRequested) { }
-        finally { try { File.Delete(socketPath); } catch { } CryptographicOperations.ZeroMemory(token); }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+            // Cancellation of the pending accept is expected during shutdown.
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(token);
+            try { File.Delete(socketPath); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                // The listener is disposed on exit. The next startup checks
+                // the socket path before binding, even if cleanup failed here.
+            }
+        }
         return 0;
     }
 
@@ -109,7 +122,8 @@ internal static class IsolatedSignerHost
             try { await stream.WriteAsync(response, deadline.Token); }
             finally { CryptographicOperations.ZeroMemory(response); }
         }
-        catch (Exception exception) when (exception is IOException or SocketException or CryptographicException or OperationCanceledException)
+        catch (Exception exception) when (exception is IOException or SocketException or CryptographicException or
+            AsnContentException or OperationCanceledException)
         {
             // Deliberately no request, key or exception output from this boundary.
         }
@@ -158,10 +172,7 @@ internal static class IsolatedSignerConfiguration
         if (!string.IsNullOrWhiteSpace(section.Value))
             throw new InvalidOperationException("Unsupported isolated signer configuration shape.");
 
-        foreach (var child in section.GetChildren())
-        {
-            if (!AllowedKeys.Contains(child.Key) || child.GetChildren().Any())
-                throw new InvalidOperationException("Unsupported isolated signer configuration key or shape.");
-        }
+        if (section.GetChildren().Any(child => !AllowedKeys.Contains(child.Key) || child.GetChildren().Any()))
+            throw new InvalidOperationException("Unsupported isolated signer configuration key or shape.");
     }
 }

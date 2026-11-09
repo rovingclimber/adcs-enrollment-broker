@@ -8,6 +8,8 @@ namespace PkiProxy.Protocol;
 
 internal static class SoapEnvelopeReader
 {
+    private const string MalformedEncoding = "MalformedEncoding";
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private static readonly XNamespace Soap12 = "http://www.w3.org/2003/05/soap-envelope";
     private static readonly XNamespace WsAddressing = "http://www.w3.org/2005/08/addressing";
 
@@ -48,14 +50,14 @@ internal static class SoapEnvelopeReader
             if (count == 0 || count > limits.MaximumBodyBytes ||
                 request.ContentLength is { } declared && declared != count)
                 return SoapReadResult.Invalid(count > limits.MaximumBodyBytes ? "EnvelopeTooLarge" : "InvalidContentLength");
-            _ = new UTF8Encoding(false, true).GetCharCount(rented, 0, count);
+            var text = DecodeUtf8(rented.AsSpan(0, count));
 
-            using (var structuralStream = new MemoryStream(rented, 0, count, writable: false))
-            using (var structuralReader = XmlReader.Create(structuralStream, settings))
+            using (var structuralText = new StringReader(text))
+            using (var structuralReader = XmlReader.Create(structuralText, settings))
                 ValidateStructure(structuralReader, limits);
 
-            using var documentStream = new MemoryStream(rented, 0, count, writable: false);
-            using var documentReader = XmlReader.Create(documentStream, settings);
+            using var documentText = new StringReader(text);
+            using var documentReader = XmlReader.Create(documentText, settings);
             var document = XDocument.Load(documentReader, LoadOptions.None);
 
             return Parse(document, limits.MaximumDecodedBinaryBytes);
@@ -70,7 +72,7 @@ internal static class SoapEnvelopeReader
         }
         catch (DecoderFallbackException)
         {
-            return SoapReadResult.Invalid("MalformedEncoding");
+            return SoapReadResult.Invalid(MalformedEncoding);
         }
         catch (InboundLimitException exception)
         {
@@ -150,13 +152,34 @@ internal static class SoapEnvelopeReader
         if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType) ||
             !string.Equals(contentType.MediaType.Value, "application/soap+xml", StringComparison.OrdinalIgnoreCase))
             return false;
-        foreach (var parameter in contentType.Parameters)
-            if (!string.Equals(parameter.Name.Value, "charset", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(parameter.Name.Value, "action", StringComparison.OrdinalIgnoreCase))
-                return false;
+        if (contentType.Parameters.Any(parameter =>
+                !string.Equals(parameter.Name.Value, "charset", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(parameter.Name.Value, "action", StringComparison.OrdinalIgnoreCase)))
+            return false;
         var charset = contentType.Charset.Value?.Trim('"');
         return string.IsNullOrEmpty(charset) || string.Equals(charset, "utf-8", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(charset, "utf8", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string DecodeUtf8(ReadOnlySpan<byte> bytes)
+    {
+        var preamble = Encoding.UTF8.Preamble;
+        if (bytes.StartsWith(preamble))
+            bytes = bytes[preamble.Length..];
+
+        var text = StrictUtf8.GetString(bytes);
+        if (text.StartsWith('\uFEFF'))
+            throw new InboundLimitException(MalformedEncoding);
+        return text;
+    }
+
+    private static void ValidateEncodingDeclaration(XmlReader reader)
+    {
+        if (reader.NodeType == XmlNodeType.XmlDeclaration &&
+            reader.GetAttribute("encoding") is { } encoding &&
+            !string.Equals(encoding, "utf-8", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(encoding, "unicode-1-1-utf-8", StringComparison.OrdinalIgnoreCase))
+            throw new InboundLimitException(MalformedEncoding);
     }
 
     private static void ValidateStructure(XmlReader reader, InboundRequestLimits limits)
@@ -169,6 +192,7 @@ internal static class SoapEnvelopeReader
         {
             if (++nodes > limits.MaximumXmlNodes) throw new InboundLimitException("XmlNodeLimitExceeded");
             if (reader.Depth > limits.MaximumXmlDepth) throw new InboundLimitException("XmlDepthLimitExceeded");
+            ValidateEncodingDeclaration(reader);
             if (reader.NodeType == XmlNodeType.Element)
             {
                 if (++elements > limits.MaximumXmlElements) throw new InboundLimitException("XmlElementLimitExceeded");

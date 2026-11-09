@@ -4,6 +4,7 @@ using PkiProxy.Domain;
 
 internal static class FileBootstrapEnrollmentTransactionStoreTests
 {
+    private const string Hostname = "device.test.example";
     private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode FileModeOwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
@@ -52,19 +53,19 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             "retained and reservation records have no asset field or asset text");
         Check(!System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(csrPath!))
             .Contains("asset-physical-001", StringComparison.Ordinal), "retained CSR has no injected asset text");
-        var beforeBinding = store.TryClaimSubmission(transactionId, binding, "asset-physical-001", now);
+        var beforeBinding = store.TryClaimSubmission(transactionId, binding, "asset-physical-001", Hostname, now);
         Check(beforeBinding.Result == BootstrapTransactionResult.InvalidState && beforeBinding.Claim is null &&
             !Directory.EnumerateFiles(main.Path, "*.claimed.json").Any(), "claim before asset binding creates no claim");
-        Check(store.BindAsset(transactionId, Different(binding), "asset-physical-001", now) ==
+        Check(store.BindAsset(transactionId, Different(binding), "asset-physical-001", Hostname, now) ==
             BootstrapTransactionResult.BindingMismatch, "binding rejects wrong CSR");
-        Check(store.BindAsset(transactionId, DifferentSpki(binding), "asset-physical-001", now) ==
+        Check(store.BindAsset(transactionId, DifferentSpki(binding), "asset-physical-001", Hostname, now) ==
             BootstrapTransactionResult.BindingMismatch, "binding rejects wrong SPKI");
         foreach (var badAsset in new[] { "", " asset", "asset ", "asset\ninvalid", new string('a', 257) })
-            Throws<ArgumentException>(() => store.BindAsset(transactionId, binding, badAsset, now), "invalid bounded asset ID");
+            Throws<ArgumentException>(() => store.BindAsset(transactionId, binding, badAsset, Hostname, now), "invalid bounded asset ID");
         Check(!Directory.EnumerateFiles(main.Path, "*.asset.json").Any(), "rejected bindings leave no asset marker");
         var bindContenders = Enumerable.Range(0, 12).Select(_ => Task.Run(() =>
             new FileBootstrapEnrollmentTransactionStore(main.Path)
-                .BindAsset(transactionId, binding, "asset-physical-001", now.AddSeconds(30)))).ToArray();
+                .BindAsset(transactionId, binding, "asset-physical-001", Hostname, now.AddSeconds(30)))).ToArray();
         Task.WaitAll(bindContenders);
         Check(bindContenders.Count(task => task.Result == BootstrapTransactionResult.AssetBound) == 1 &&
             bindContenders.Count(task => task.Result == BootstrapTransactionResult.AlreadyBound) == 11,
@@ -75,15 +76,19 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         Check(new FileBootstrapEnrollmentTransactionStore(main.Path)
             .Lookup(transactionId, binding, "asset-physical-001", now.AddSeconds(30)).State == BootstrapTransactionState.AssetBound,
             "exact asset binding survives reopen");
-        Check(store.BindAsset(transactionId, binding, "asset-physical-001", now.AddSeconds(31)) ==
+        Check(store.BindAsset(transactionId, binding, "asset-physical-001", Hostname, now.AddSeconds(31)) ==
             BootstrapTransactionResult.AlreadyBound, "later exact replay reconciles the immutable original binding time");
-        Check(store.BindAsset(transactionId, binding, "ASSET-physical-001", now.AddSeconds(31)) ==
+        Check(store.BindAsset(transactionId, binding, "ASSET-physical-001", Hostname, now.AddSeconds(31)) ==
             BootstrapTransactionResult.Conflict, "asset IDs are exact and case-sensitive");
-        Check(store.TryClaimSubmission(transactionId, binding, "asset-other", now.AddSeconds(31)).Result ==
+        Check(store.BindAsset(transactionId, binding, "asset-physical-001", "changed.test.example", now.AddSeconds(31)) ==
+            BootstrapTransactionResult.Conflict, "cannot change hostname under the same asset ID");
+        Check(store.TryClaimSubmission(transactionId, binding, "asset-physical-001", "changed.test.example", now.AddSeconds(31)).Result ==
+            BootstrapTransactionResult.BindingMismatch, "claim requires the approved hostname as well as the asset ID");
+        Check(store.TryClaimSubmission(transactionId, binding, "asset-other", Hostname, now.AddSeconds(31)).Result ==
             BootstrapTransactionResult.BindingMismatch, "claim rejects a different asset");
-        Check(store.TryClaimSubmission(transactionId, Different(binding), "asset-physical-001", now.AddSeconds(31)).Result ==
+        Check(store.TryClaimSubmission(transactionId, Different(binding), "asset-physical-001", Hostname, now.AddSeconds(31)).Result ==
             BootstrapTransactionResult.BindingMismatch, "claim rejects a different CSR");
-        Check(store.TryClaimSubmission(transactionId, DifferentSpki(binding), "asset-physical-001", now.AddSeconds(31)).Result ==
+        Check(store.TryClaimSubmission(transactionId, DifferentSpki(binding), "asset-physical-001", Hostname, now.AddSeconds(31)).Result ==
             BootstrapTransactionResult.BindingMismatch, "claim rejects a different SPKI");
         Check(File.ReadAllBytes(assetPath).SequenceEqual(assetBytes), "replays and conflicts never overwrite asset marker");
         Check(store.Lookup(transactionId, binding, null, now.AddSeconds(31)).Result ==
@@ -96,19 +101,19 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             TimeSpan.FromMinutes(5)).TransactionId!;
         var differentBindContenders = Enumerable.Range(0, 12).Select(index => Task.Run(() =>
             (Asset: "asset-race-" + index, Result: new FileBootstrapEnrollmentTransactionStore(bindRaceRoot.Path)
-                .BindAsset(bindRaceId, bindRaceRequest.Binding, "asset-race-" + index, now)))).ToArray();
+                .BindAsset(bindRaceId, bindRaceRequest.Binding, "asset-race-" + index, Hostname, now)))).ToArray();
         Task.WaitAll(differentBindContenders);
         Check(differentBindContenders.Count(task => task.Result.Result == BootstrapTransactionResult.AssetBound) == 1 &&
             differentBindContenders.Count(task => task.Result.Result == BootstrapTransactionResult.Conflict) == 11,
             "different-asset concurrent bind has one creator and eleven conflicts");
         var boundWinner = differentBindContenders.Single(task => task.Result.Result == BootstrapTransactionResult.AssetBound).Result.Asset;
         Check(new FileBootstrapEnrollmentTransactionStore(bindRaceRoot.Path)
-            .TryClaimSubmission(bindRaceId, bindRaceRequest.Binding, boundWinner, now).Claim is not null,
+            .TryClaimSubmission(bindRaceId, bindRaceRequest.Binding, boundWinner, Hostname, now).Claim is not null,
             "the winning concurrent asset binding is durable and claimable");
 
         var contenders = Enumerable.Range(0, 12).Select(_ => Task.Run(() =>
             new FileBootstrapEnrollmentTransactionStore(main.Path)
-                .TryClaimSubmission(transactionId, binding, "asset-physical-001", now.AddMinutes(1)))).ToArray();
+                .TryClaimSubmission(transactionId, binding, "asset-physical-001", Hostname, now.AddMinutes(1)))).ToArray();
         Task.WaitAll(contenders);
         Check(contenders.Count(task => task.Result.Result == BootstrapTransactionResult.Claimed) == 1,
             "concurrent callers have exactly one durable submission winner");
@@ -116,13 +121,13 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             .All(task => task.Result.Result == BootstrapTransactionResult.AlreadyClaimed),
             "all submission losers receive no claim");
         var winner = contenders.Single(task => task.Result.Result == BootstrapTransactionResult.Claimed).Result.Claim!;
-        Check(store.BindAsset(transactionId, binding, "asset-physical-001", now.AddMinutes(2)) ==
+        Check(store.BindAsset(transactionId, binding, "asset-physical-001", Hostname, now.AddMinutes(2)) ==
             BootstrapTransactionResult.InvalidState, "bind after claim is rejected even for the original asset");
-        Check(store.BindAsset(transactionId, binding, "asset-other", now.AddMinutes(2)) ==
+        Check(store.BindAsset(transactionId, binding, "asset-other", Hostname, now.AddMinutes(2)) ==
             BootstrapTransactionResult.InvalidState, "bind after claim never changes asset");
         Check(winner.ExportValidatedCsr().SequenceEqual(csr), "the winner receives the exact retained CSR");
         Check(new FileBootstrapEnrollmentTransactionStore(main.Path)
-            .TryClaimSubmission(transactionId, binding, "asset-physical-001", now.AddMinutes(2)).Result ==
+            .TryClaimSubmission(transactionId, binding, "asset-physical-001", Hostname, now.AddMinutes(2)).Result ==
             BootstrapTransactionResult.AlreadyClaimed, "restart after an uncertain send never permits resubmission");
         Check(new FileBootstrapEnrollmentTransactionStore(main.Path)
             .Lookup(transactionId, binding, "asset-physical-001", now.AddHours(1)).State ==
@@ -165,9 +170,9 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var failedRequest = Request();
         var failedId = failedStore.Retain(failedRequest.Csr, failedRequest.Binding, now,
             TimeSpan.FromMinutes(10)).TransactionId!;
-        Check(failedStore.BindAsset(failedId, failedRequest.Binding, "asset-002", now) ==
+        Check(failedStore.BindAsset(failedId, failedRequest.Binding, "asset-002", Hostname, now) ==
             BootstrapTransactionResult.AssetBound, "failed lifecycle binds asset first");
-        var failedClaim = failedStore.TryClaimSubmission(failedId, failedRequest.Binding, "asset-002",
+        var failedClaim = failedStore.TryClaimSubmission(failedId, failedRequest.Binding, "asset-002", Hostname,
             now.AddMinutes(1)).Claim!;
         failedClaim.RecordFailed("transport-uncertain", now.AddMinutes(2));
         Check(new FileBootstrapEnrollmentTransactionStore(failedRoot.Path)
@@ -180,10 +185,10 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var terminalRaceStore = new FileBootstrapEnrollmentTransactionStore(terminalRaceRoot.Path);
         var terminalRaceRequest = Request();
         var terminalRaceId = terminalRaceStore.Retain(terminalRaceRequest.Csr, terminalRaceRequest.Binding, now, TimeSpan.FromMinutes(10)).TransactionId!;
-        Check(terminalRaceStore.BindAsset(terminalRaceId, terminalRaceRequest.Binding, "asset-race", now) ==
+        Check(terminalRaceStore.BindAsset(terminalRaceId, terminalRaceRequest.Binding, "asset-race", Hostname, now) ==
             BootstrapTransactionResult.AssetBound, "terminal race binds asset first");
         var terminalRaceClaim = terminalRaceStore.TryClaimSubmission(terminalRaceId, terminalRaceRequest.Binding,
-            "asset-race", now.AddMinutes(1)).Claim!;
+            "asset-race", Hostname, now.AddMinutes(1)).Claim!;
         var terminalContenders = new[]
         {
             Task.Run(() => TryTerminal(() => terminalRaceClaim.RecordIssued(99, new string('D', 64), "22", now.AddMinutes(2)), "issued")),
@@ -203,10 +208,10 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var expiryRequest = Request();
         var expiryId = expiryStore.Retain(expiryRequest.Csr, expiryRequest.Binding, now,
             TimeSpan.FromMinutes(1)).TransactionId!;
-        Check(expiryStore.BindAsset(expiryId, expiryRequest.Binding, "asset-003", now.AddMinutes(1)) ==
+        Check(expiryStore.BindAsset(expiryId, expiryRequest.Binding, "asset-003", Hostname, now.AddMinutes(1)) ==
             BootstrapTransactionResult.Expired && !Directory.EnumerateFiles(expiryRoot.Path, "*.asset.json").Any(),
             "expiry boundary rejects asset binding without a marker");
-        Check(expiryStore.TryClaimSubmission(expiryId, expiryRequest.Binding, "asset-003", now.AddMinutes(1)).Result ==
+        Check(expiryStore.TryClaimSubmission(expiryId, expiryRequest.Binding, "asset-003", Hostname, now.AddMinutes(1)).Result ==
             BootstrapTransactionResult.Expired, "expiry boundary rejects submission");
         Check(expiryStore.Lookup(new string('0', 32), expiryRequest.Binding, "asset-003", now).Result ==
             BootstrapTransactionResult.NotFound, "unknown transaction is rejected");
@@ -217,25 +222,25 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var chronologyStore = new FileBootstrapEnrollmentTransactionStore(chronologyRoot.Path);
         var chronologyRequest = Request();
         var chronologyId = chronologyStore.Retain(chronologyRequest.Csr, chronologyRequest.Binding, now, TimeSpan.FromMinutes(5)).TransactionId!;
-        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", now.AddTicks(-1)) ==
+        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", Hostname, now.AddTicks(-1)) ==
             BootstrapTransactionResult.InvalidState && !Directory.EnumerateFiles(chronologyRoot.Path, "*.asset.json").Any(),
             "binding cannot predate retention");
-        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", now.AddSeconds(30)) ==
+        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", Hostname, now.AddSeconds(30)) ==
             BootstrapTransactionResult.AssetBound, "binding chronology fixture");
-        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", now) ==
+        Check(chronologyStore.BindAsset(chronologyId, chronologyRequest.Binding, "asset-time", Hostname, now) ==
             BootstrapTransactionResult.InvalidState, "idempotent binding cannot predate durable binding time");
-        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time", now).Result ==
+        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time", Hostname, now).Result ==
             BootstrapTransactionResult.InvalidState, "claim cannot predate asset binding");
         Check(chronologyStore.Lookup(chronologyId, chronologyRequest.Binding, "asset-time", now).Result ==
             BootstrapTransactionResult.InvalidState, "lookup cannot predate asset binding");
         Check(chronologyStore.Lookup(chronologyId, chronologyRequest.Binding, "asset-time", now.AddMinutes(5)).State ==
             BootstrapTransactionState.Expired, "expired asset-bound state is explicit");
-        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time", now.AddMinutes(5)).Result ==
+        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time", Hostname, now.AddMinutes(5)).Result ==
             BootstrapTransactionResult.Expired, "bound transaction cannot claim at expiry");
-        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time",
+        Check(chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding, "asset-time", Hostname,
             now.AddSeconds(-1)).Result == BootstrapTransactionResult.InvalidState, "backdated claim is rejected");
         var chronologyClaim = chronologyStore.TryClaimSubmission(chronologyId, chronologyRequest.Binding,
-            "asset-time", now.AddMinutes(1)).Claim!;
+            "asset-time", Hostname, now.AddMinutes(1)).Claim!;
         Throws<ArgumentOutOfRangeException>(() => chronologyClaim.RecordPending(8, now),
             "backdated pending transition");
         Throws<ArgumentOutOfRangeException>(() => chronologyClaim.RecordIssued(8, new string('E', 64), "12", now),
@@ -263,7 +268,7 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var incompleteId = incompleteStore.Retain(incompleteRequest.Csr, incompleteRequest.Binding, now,
             TimeSpan.FromMinutes(5)).TransactionId!;
         File.Delete(Directory.EnumerateFiles(incompleteRoot.Path, "*.csr").Single());
-        Throws<IOException>(() => incompleteStore.BindAsset(incompleteId, incompleteRequest.Binding, "asset-incomplete", now),
+        Throws<IOException>(() => incompleteStore.BindAsset(incompleteId, incompleteRequest.Binding, "asset-incomplete", Hostname, now),
             "binding requires the complete retained public request");
         Check(!Directory.EnumerateFiles(incompleteRoot.Path, "*.asset.json").Any(), "incomplete retention cannot leave an asset marker");
 
@@ -284,9 +289,9 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
         var immutableRequest = Request();
         var immutableId = immutableStore.Retain(immutableRequest.Csr, immutableRequest.Binding, now,
             TimeSpan.FromMinutes(5)).TransactionId!;
-        Check(immutableStore.BindAsset(immutableId, immutableRequest.Binding, "asset-original", now) ==
+        Check(immutableStore.BindAsset(immutableId, immutableRequest.Binding, "asset-original", Hostname, now) ==
             BootstrapTransactionResult.AssetBound, "immutable asset fixture binds");
-        var immutableClaim = immutableStore.TryClaimSubmission(immutableId, immutableRequest.Binding, "asset-original", now).Claim!;
+        var immutableClaim = immutableStore.TryClaimSubmission(immutableId, immutableRequest.Binding, "asset-original", Hostname, now).Claim!;
         var immutableRecord = Directory.EnumerateFiles(immutableRoot.Path, "*.asset.json").Single();
         File.WriteAllText(immutableRecord, File.ReadAllText(immutableRecord).Replace(
             "asset-original", "asset-modified", StringComparison.Ordinal));
@@ -306,7 +311,7 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             var corruptRequest = Request();
             var corruptId = corruptStore.Retain(corruptRequest.Csr, corruptRequest.Binding, now,
                 TimeSpan.FromMinutes(5)).TransactionId!;
-            corruptStore.BindAsset(corruptId, corruptRequest.Binding, "asset-corruption", now.AddMinutes(1));
+            corruptStore.BindAsset(corruptId, corruptRequest.Binding, "asset-corruption", Hostname, now.AddMinutes(1));
             var corruptPath = Directory.EnumerateFiles(corruptRoot.Path, "*.asset.json").Single();
             var originalText = File.ReadAllText(corruptPath);
             if (corruption == "symlink")
@@ -320,7 +325,7 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
                 var corruptText = corruption switch
                 {
                     "json" => "{",
-                    "duplicate" => originalText.Replace("\"Version\":1", "\"Version\":1,\"Version\":1", StringComparison.Ordinal),
+                    "duplicate" => originalText.Replace("\"Version\":2", "\"Version\":2,\"Version\":2", StringComparison.Ordinal),
                     "csr-hash" => originalText.Replace(Convert.ToHexString(corruptRequest.Binding.CsrSha256), new string('0', 64), StringComparison.Ordinal),
                     "spki-hash" => originalText.Replace(Convert.ToHexString(corruptRequest.Binding.SubjectPublicKeyInfoSha256), new string('0', 64), StringComparison.Ordinal),
                     "backdated" => originalText.Replace("12:01:00", "11:59:59", StringComparison.Ordinal),
@@ -337,8 +342,8 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
                 {
                     () => new FileBootstrapEnrollmentTransactionStore(corruptRoot.Path)
                         .Lookup(corruptId, corruptRequest.Binding, "asset-corruption", now.AddMinutes(2)),
-                    () => corruptStore.TryClaimSubmission(corruptId, corruptRequest.Binding, "asset-corruption", now.AddMinutes(2)),
-                    () => corruptStore.BindAsset(corruptId, corruptRequest.Binding, "asset-corruption", now.AddMinutes(2))
+                    () => corruptStore.TryClaimSubmission(corruptId, corruptRequest.Binding, "asset-corruption", Hostname, now.AddMinutes(2)),
+                    () => corruptStore.BindAsset(corruptId, corruptRequest.Binding, "asset-corruption", Hostname, now.AddMinutes(2))
                 };
                 foreach (var operation in operations)
                 {
@@ -353,15 +358,15 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             }
         }
 
-        foreach (var corruption in new[] { "missing-asset", "csr-bytes", "asset-time" })
+        foreach (var corruption in new[] { "missing-asset", "csr-bytes", "asset-time", "hostname" })
         {
             using var changedRoot = Root();
             var changedStore = new FileBootstrapEnrollmentTransactionStore(changedRoot.Path);
             var changedRequest = Request();
             var changedId = changedStore.Retain(changedRequest.Csr, changedRequest.Binding, now,
                 TimeSpan.FromMinutes(5)).TransactionId!;
-            changedStore.BindAsset(changedId, changedRequest.Binding, "asset-cached", now);
-            var changedClaim = changedStore.TryClaimSubmission(changedId, changedRequest.Binding, "asset-cached", now.AddMinutes(1)).Claim!;
+            changedStore.BindAsset(changedId, changedRequest.Binding, "asset-cached", Hostname, now);
+            var changedClaim = changedStore.TryClaimSubmission(changedId, changedRequest.Binding, "asset-cached", Hostname, now.AddMinutes(1)).Claim!;
             changedClaim.RecordPending(42, now.AddMinutes(2));
             var recoveredClaim = new FileBootstrapEnrollmentTransactionStore(changedRoot.Path)
                 .Lookup(changedId, changedRequest.Binding, "asset-cached", now.AddMinutes(2)).PendingCompletion!;
@@ -369,6 +374,8 @@ internal static class FileBootstrapEnrollmentTransactionStoreTests
             if (corruption == "missing-asset") File.Delete(changedAssetPath);
             else if (corruption == "csr-bytes")
                 File.WriteAllBytes(Directory.EnumerateFiles(changedRoot.Path, "*.csr").Single(), Request().Csr);
+            else if (corruption == "hostname")
+                File.WriteAllText(changedAssetPath, File.ReadAllText(changedAssetPath).Replace(Hostname, "changed.test.example", StringComparison.Ordinal));
             else
                 File.WriteAllText(changedAssetPath, File.ReadAllText(changedAssetPath).Replace("12:00:00", "12:00:30", StringComparison.Ordinal));
             Throws<InvalidDataException>(() => changedStore.Lookup(changedId, changedRequest.Binding, "asset-cached", now.AddMinutes(3)),

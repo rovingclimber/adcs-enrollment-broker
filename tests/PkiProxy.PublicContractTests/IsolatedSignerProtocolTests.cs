@@ -58,7 +58,7 @@ internal static class IsolatedSignerProtocolTests
             var metadata = new SigningIntentMetadata(SigningOperation.DomainEnrollment,
                 SigningIntentMetadata.Correlate(SigningOperation.DomainEnrollment, "request-one"u8.ToArray()));
 
-            var first = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, replay, geteuid());
+            var first = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, replay, geteuid());
             await first.Ready;
             var built = CmcEnrollmentRequestBuilder.Build(enrollment.Csr, enrollment.Binding, enrollment.Identity,
                 enrollment.Template, certificate, DateTimeOffset.UtcNow, remote, metadata);
@@ -68,7 +68,7 @@ internal static class IsolatedSignerProtocolTests
 
             // An identical lost-response retry is safe: correlation maps to the
             // same canonical intent and RSA-PKCS1 produces the same signature.
-            var retry = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, replay, geteuid());
+            var retry = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, replay, geteuid());
             await retry.Ready;
             var repeated = CmcEnrollmentRequestBuilder.Build(enrollment.Csr, enrollment.Binding, enrollment.Identity,
                 enrollment.Template, certificate, DateTimeOffset.UtcNow, remote, metadata);
@@ -77,14 +77,14 @@ internal static class IsolatedSignerProtocolTests
 
             // The durable correlation binding survives a sidecar restart.
             var restartedReplay = new SigningReplayWindow(16, replayPath);
-            var restart = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, restartedReplay, geteuid());
+            var restart = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, restartedReplay, geteuid());
             await restart.Ready;
             _ = CmcEnrollmentRequestBuilder.Build(enrollment.Csr, enrollment.Binding, enrollment.Identity,
                 enrollment.Template, certificate, DateTimeOffset.UtcNow, remote, metadata);
             await restart.Completion;
 
             var changed = enrollment with { Identity = enrollment.Identity with { SubjectAlternativeNameDnsNames = ["other.example.test"] } };
-            var mismatch = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, restartedReplay, geteuid());
+            var mismatch = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy, restartedReplay, geteuid());
             await mismatch.Ready;
             Reject(() => CmcEnrollmentRequestBuilder.Build(changed.Csr, changed.Binding, changed.Identity,
                 changed.Template, certificate, DateTimeOffset.UtcNow, remote, metadata), "correlation reused for different intent");
@@ -97,7 +97,7 @@ internal static class IsolatedSignerProtocolTests
             var wrongToken = RandomNumberGenerator.GetBytes(32);
             using (var wrongRemote = new UnixSocketRsa(socketPath, wrongToken, certificate))
             {
-                var denied = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy,
+                var denied = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy,
                     restartedReplay, geteuid());
                 await denied.Ready;
                 Reject(() => CmcEnrollmentRequestBuilder.Build(enrollment.Csr, enrollment.Binding, enrollment.Identity,
@@ -106,7 +106,7 @@ internal static class IsolatedSignerProtocolTests
                 await denied.Completion;
             }
             CryptographicOperations.ZeroMemory(wrongToken);
-            var unauthorized = ServeOneAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy,
+            var unauthorized = ServeAsync(socketPath, provider, token, SHA256.HashData(certificate.RawData), policy,
                 restartedReplay, geteuid() + 1);
             await unauthorized.Ready;
             Reject(() => CmcEnrollmentRequestBuilder.Build(enrollment.Csr, enrollment.Binding, enrollment.Identity,
@@ -250,6 +250,29 @@ internal static class IsolatedSignerProtocolTests
         var stalled = ServeStalledAsync(stalledPath, provider, token, SHA256.HashData(certificate.RawData), policy, replay);
         await stalled;
         Check(provider.SignCount == 4, "stalled request never reaches provider");
+
+        // DER NULL is well framed but invalid PkiData. Its correct digest
+        // reaches the ASN.1 decoder. Reuse the correlation on the same listener
+        // to prove that rejection neither stops the loop nor claims replay state.
+        var malformedPath = Path.Combine(root, "malformed.sock");
+        var malformedListener = ServeAsync(malformedPath, provider, token, valid.CertificateSha256,
+            policy, replay, geteuid(), requestCount: 2);
+        await malformedListener.Ready;
+        using var sameListener = new UnixSocketRsa(malformedPath, token.ToArray(), certificate);
+        var metadata = new SigningIntentMetadata(SigningOperation.DomainEnrollment, correlation);
+        byte[] malformedPayload = [0x05, 0x00];
+        Reject(() =>
+        {
+            using var scope = sameListener.BeginEnrollmentIntent(metadata, Profile, Template, 2, 0, malformedPayload);
+            _ = sameListener.SignHash(SigningIntentPolicy.ComputeCmsSignatureDigest(malformedPayload),
+                HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        }, "digest-valid malformed DER");
+        Check(provider.SignCount == 4, "malformed DER never reaches provider");
+        using (sameListener.BeginEnrollmentIntent(metadata, Profile, Template, 2, 0, payload))
+            _ = sameListener.SignHash(digest, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        await malformedListener.Completion;
+        Check(provider.SignCount == 5, "valid intent succeeds after malformed DER on same listener");
+
         CryptographicOperations.ZeroMemory(encoded); CryptographicOperations.ZeroMemory(digest);
     }
 
@@ -320,8 +343,8 @@ internal static class IsolatedSignerProtocolTests
         CryptographicOperations.ZeroMemory(copy);
     }
 
-    private static (Task Ready, Task Completion) ServeOneAsync(string path, IIsolatedSignerKeyProvider provider, byte[] token,
-        byte[] generation, SigningIntentPolicy policy, SigningReplayWindow replay, uint allowedUid)
+    private static (Task Ready, Task Completion) ServeAsync(string path, IIsolatedSignerKeyProvider provider, byte[] token,
+        byte[] generation, SigningIntentPolicy policy, SigningReplayWindow replay, uint allowedUid, int requestCount = 1)
     {
         var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var completion = Task.Run(async () =>
@@ -329,9 +352,17 @@ internal static class IsolatedSignerProtocolTests
             if (File.Exists(path)) File.Delete(path);
             using var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             listener.Bind(new UnixDomainSocketEndPoint(path)); listener.Listen(1); ready.SetResult(true);
-            using var client = await listener.AcceptAsync();
-            await IsolatedSignerHost.HandleAsync(client, provider, token, generation, 60, allowedUid, policy, replay, CancellationToken.None);
-            File.Delete(path);
+            try
+            {
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                for (var i = 0; i < requestCount; i++)
+                {
+                    using var client = await listener.AcceptAsync(deadline.Token);
+                    await IsolatedSignerHost.HandleAsync(client, provider, token, generation, 60, allowedUid,
+                        policy, replay, deadline.Token);
+                }
+            }
+            finally { File.Delete(path); }
         });
         return (ready.Task, completion);
     }
