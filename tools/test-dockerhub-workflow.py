@@ -7,6 +7,7 @@ import re
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "container.yml"
+READINESS = WORKFLOW.with_name("release-readiness.yml")
 DOCKERFILE = ROOT / "Dockerfile"
 DOCKERIGNORE = ROOT / ".dockerignore"
 
@@ -18,18 +19,20 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> int:
     text = WORKFLOW.read_text(encoding="utf-8")
+    readiness = READINESS.read_text(encoding="utf-8")
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
     dockerignore = DOCKERIGNORE.read_text(encoding="utf-8")
     require("pull_request_target" not in text, "privileged pull_request_target is forbidden")
     require("types: [published]" in text, "publication must require a published GitHub release")
-    require(text.count("if: github.event_name == 'release'") == 4,
-            "validation, login, push and attestation must stay release-gated")
+    require(text.count("if: github.event_name == 'release'") == 5,
+            "validation, recheck, login, push and attestation must stay release-gated")
     require("IMAGE_NAME: rovingclimber/adcs-enrollment-broker" in text,
             "the workflow must publish to the real public Docker Hub repository")
     require("example/adcs-enrollment-broker" not in text,
             "placeholder image repositories are forbidden")
-    require("fetch-depth: 0" in text and "git merge-base --is-ancestor" in text,
-            "release source must be proven reachable from main")
+    require("fetch-depth: 0" in text and 'tag_commit=$(git rev-parse' in text and
+            '"$head_commit" = "$GITHUB_SHA"' in text,
+            "the release tag and checkout must match the workflow revision")
     require("^v?[0-9]+\\.[0-9]+\\.[0-9]+$" in text and
             "RELEASE_PRERELEASE" in text,
             "only stable semantic-version releases may publish")
@@ -37,10 +40,23 @@ def main() -> int:
             "Docker Hub credentials must come from GitHub secrets")
     require("aquasec/trivy:0.76.2@sha256:" in text,
             "the vulnerability scanner must remain digest pinned")
-    require(text.index("Scan the exact local image") < text.index("Log in to Docker Hub") <
+    require(text.index("Scan the exact local image") < text.index("Recheck CodeQL before publication") <
+            text.index("Log in to Docker Hub") <
             text.index("Push the exact scanned image") < text.index("Attest the published image"),
-            "scan, login, push and attestation order changed")
-    action_refs = re.findall(r"^\s*uses:\s*([^\s#]+)", text, flags=re.MULTILINE)
+            "scan, CodeQL recheck, login, push and attestation order changed")
+    require(text.count("python3 tools/check-codeql-release.py") == 2 and
+            text.index("python3 tools/check-codeql-release.py") < text.index("Set up Buildx"),
+            "the exact CodeQL findings gate must run before building and before Docker Hub login")
+    require("workflows: [CodeQL]" in readiness and "branches: [main]" in readiness and
+            "types: [completed]" in readiness and "workflow_dispatch:" in readiness and
+            '"$GITHUB_REF" != refs/heads/main' in readiness and
+            "python3 tools/check-codeql-release.py" in readiness,
+            "the tag check must verify the exact current main revision after CodeQL completes")
+    require("security-events: read" in text and "actions: read" in text and
+            "security-events: read" in readiness and "actions: read" in readiness and
+            "write" not in readiness,
+            "release readiness must use only read permissions for analysis and repository metadata")
+    action_refs = re.findall(r"^\s*uses:\s*([^\s#]+)", text + "\n" + readiness, flags=re.MULTILINE)
     require(action_refs and all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", ref) for ref in action_refs),
             "every GitHub Action must use an immutable commit")
     require("platforms: linux/amd64" in text, "the published platform boundary must be explicit")
@@ -60,7 +76,7 @@ def main() -> int:
     require("dotnet restore PkiProxy.slnx --locked-mode -p:NuGetAudit=true -p:NuGetAuditMode=all "
             "-p:TreatWarningsAsErrors=true" in dockerfile,
             "the container build must fail on any dependency audit warning")
-    print("Docker Hub workflow contracts passed: 18.")
+    print("Docker Hub workflow contracts passed: 21.")
     return 0
 
 

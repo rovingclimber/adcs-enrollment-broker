@@ -38,11 +38,16 @@ Hub releases add a GitHub artifact attestation over the exact registry digest
 after the same local image passes runtime and vulnerability checks. This does
 not replace an independently governed production signing identity.
 
-Container publication accepts only stable semantic-version releases whose tag
-resolves to the checked-out commit and whose commit is reachable from protected
-`main`. Prereleases, malformed version tags, and tags outside `main` fail before
-registry authentication. `latest` therefore advances only with an admitted
-stable release.
+Stable version tags require the **CodeQL release readiness** check on the
+exact protected `main` commit. It verifies the completed CodeQL run and its
+uploaded analysis and refuses any open code scanning alert, including alerts
+outside the pull request diff. Review and resolve any open alerts before
+rerunning readiness on `main`.
+
+Container publication verifies the version tag and checked-out revision, then
+repeats the full CodeQL check before the build and before registry
+authentication. A missing, stale, failed, or unreadable scan blocks the
+release. `latest` advances only with an admitted stable release.
 
 Use the root `RELEASE_CHECKLIST.md` for every candidate. A changed file,
 dependency, manifest, pipeline input, or generated artifact creates a new
